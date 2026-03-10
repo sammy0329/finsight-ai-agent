@@ -2,9 +2,15 @@
 
 뉴스 수집 -> 정제 -> 메타데이터 부착 -> 청킹 -> 임베딩 -> ChromaDB upsert
 전체 파이프라인을 실행하고 결과 통계를 반환한다.
+
+CLI 실행:
+    python -m app.pipeline.run_pipeline
 """
 
 import logging
+import os
+import sys
+from datetime import date
 
 from app.pipeline.chroma_client import get_chroma_client, get_or_create_collection
 from app.pipeline.chunker import chunk_news_item
@@ -107,3 +113,39 @@ def run_pipeline(config: dict) -> dict:
         logger.exception("ChromaDB upsert 실패")
 
     return stats
+
+
+if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    )
+
+    run_date = os.getenv("PIPELINE_DATE") or date.today().isoformat()
+    market = os.getenv("PIPELINE_MARKET", "ALL")
+    markets = ["KOR", "US"] if market == "ALL" else [market]
+
+    config_base = {
+        "date": run_date,
+        "tickers": [],
+        "query": "주요 금융 시장 이슈",
+        "openai_api_key": os.environ["OPENAI_API_KEY"],
+        "chroma_host": os.getenv("CHROMA_HOST", "localhost"),
+        "chroma_port": int(os.getenv("CHROMA_PORT", "8001")),
+    }
+
+    total: dict[str, int] = {"collected": 0, "cleaned": 0, "chunked": 0, "upserted": 0}
+    success = True
+
+    for m in markets:
+        logger.info("파이프라인 시작 — market=%s, date=%s", m, run_date)
+        result = run_pipeline({**config_base, "market": m})
+        logger.info("파이프라인 완료 — %s", result)
+        for key in total:
+            total[key] += result.get(key, 0)
+        if result["upserted"] == 0:
+            logger.warning("market=%s upsert 결과 없음", m)
+            success = False
+
+    logger.info("최종 통계 — %s", total)
+    sys.exit(0 if success else 1)

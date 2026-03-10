@@ -1,0 +1,151 @@
+name: Daily Financial Data Pipeline
+
+on:
+  # T-116: 평일 16:30 KST (UTC 07:30)
+  schedule:
+    - cron: "30 7 * * 1-5"
+
+  # T-120: 수동 실행
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "수집 기준일 (YYYY-MM-DD, 미입력 시 오늘)"
+        required: false
+        default: ""
+      market:
+        description: "수집 시장 (KOR / US / ALL)"
+        required: false
+        default: "ALL"
+
+env:
+  PYTHON_VERSION: "3.11"
+  WORKING_DIR: ai-server
+
+jobs:
+  run-pipeline:
+    name: Run Financial Data Pipeline
+    runs-on: ubuntu-latest
+
+    # T-118: 실패 시 최대 2회 재시도 (총 3회 시도)
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install dependencies
+        working-directory: ${{ env.WORKING_DIR }}
+        run: poetry install --only main --no-interaction
+
+      - name: Set pipeline date
+        id: set-date
+        run: |
+          if [ -z "${{ github.event.inputs.date }}" ]; then
+            echo "date=$(date '+%Y-%m-%d')" >> $GITHUB_OUTPUT
+          else
+            echo "date=${{ github.event.inputs.date }}" >> $GITHUB_OUTPUT
+          fi
+
+      # T-118: SSH 터널로 EC2의 ChromaDB에 접근 (포트 포워딩)
+      - name: Setup SSH tunnel to EC2 ChromaDB
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$EC2_SSH_KEY" | base64 -d > ~/.ssh/finsight-key.pem
+          chmod 600 ~/.ssh/finsight-key.pem
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+          # ChromaDB 8001 포트를 로컬 8001로 포워딩 (백그라운드)
+          ssh -i ~/.ssh/finsight-key.pem \
+              -L 8001:localhost:8001 \
+              -N -f \
+              ec2-user@"$EC2_HOST"
+          echo "SSH tunnel established"
+
+      # T-118: 파이프라인 실행 (실패 시 재시도 스크립트)
+      - name: Run pipeline with retry
+        id: run-pipeline
+        working-directory: ${{ env.WORKING_DIR }}
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DART_API_KEY: ${{ secrets.DART_API_KEY }}
+          NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
+          NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
+          NEWS_API_KEY: ${{ secrets.NEWS_API_KEY }}
+          CHROMA_HOST: localhost
+          CHROMA_PORT: "8001"
+          INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY }}
+          PIPELINE_DATE: ${{ steps.set-date.outputs.date }}
+          PIPELINE_MARKET: ${{ github.event.inputs.market || 'ALL' }}
+        run: |
+          MAX_RETRIES=2
+          ATTEMPT=0
+          until poetry run python -m app.pipeline.run_pipeline; do
+            ATTEMPT=$((ATTEMPT + 1))
+            if [ "$ATTEMPT" -ge "$MAX_RETRIES" ]; then
+              echo "Pipeline failed after $MAX_RETRIES retries"
+              exit 1
+            fi
+            echo "Attempt $ATTEMPT failed. Retrying in 60 seconds..."
+            sleep 60
+          done
+
+      # SSH 터널 종료
+      - name: Teardown SSH tunnel
+        if: always()
+        run: pkill -f "ssh.*8001" || true
+
+      # T-119: 성공 시 Slack 알림
+      - name: Notify Slack on success
+        if: success()
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          payload: |
+            {
+              "text": "✅ *FinSight 파이프라인 완료*",
+              "attachments": [{
+                "color": "good",
+                "fields": [
+                  {"title": "날짜", "value": "${{ steps.set-date.outputs.date }}", "short": true},
+                  {"title": "시장", "value": "${{ github.event.inputs.market || 'ALL' }}", "short": true},
+                  {"title": "트리거", "value": "${{ github.event_name }}", "short": true},
+                  {"title": "실행 링크", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}", "short": false}
+                ]
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+      # T-119: 실패 시 Slack 알림
+      - name: Notify Slack on failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          payload: |
+            {
+              "text": "🚨 *FinSight 파이프라인 실패*",
+              "attachments": [{
+                "color": "danger",
+                "fields": [
+                  {"title": "날짜", "value": "${{ steps.set-date.outputs.date }}", "short": true},
+                  {"title": "시장", "value": "${{ github.event.inputs.market || 'ALL' }}", "short": true},
+                  {"title": "재시도 횟수", "value": "2회 초과", "short": true},
+                  {"title": "실행 링크", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}", "short": false}
+                ]
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

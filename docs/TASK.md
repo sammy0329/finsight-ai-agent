@@ -96,12 +96,12 @@
 
 ### Epic 1-5. GitHub Actions 자동화
 
-- [ ] **T-116** `.github/workflows/daily-pipeline.yml` 작성
+- [x] **T-116** `.github/workflows/daily-pipeline.yml` 작성
   - cron: `30 7 * * 1-5` (평일 16:30 KST)
-- [ ] **T-117** GitHub Actions Secrets 등록 (OpenAI Key, DART Key, Naver Key, NewsAPI Key)
-- [ ] **T-118** 파이프라인 실패 시 재시도 로직 구현 (최대 2회)
-- [ ] **T-119** 파이프라인 완료/실패 Slack 알림 연동
-- [ ] **T-120** 파이프라인 수동 실행(`workflow_dispatch`) 및 ChromaDB 정상 적재 검증
+- [x] **T-117** GitHub Actions Secrets 등록 (OpenAI Key, DART Key, Naver Key, NewsAPI Key)
+- [x] **T-118** 파이프라인 실패 시 재시도 로직 구현 (최대 2회)
+- [x] **T-119** 파이프라인 완료/실패 Slack 알림 연동
+- [!] **T-120** 파이프라인 수동 실행(`workflow_dispatch`) 및 ChromaDB 정상 적재 검증 — EC2 배포 후 실행 필요
 
 ---
 
