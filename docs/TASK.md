@@ -22,8 +22,8 @@
 
 ### Epic 0-1. 레포지토리 및 디렉토리 구조 설정
 
-- [ ] **T-001** GitHub 레포지토리 생성 확인 (main 브랜치 단일 운용)
-- [ ] **T-002** 모노레포 디렉토리 구조 생성
+- [x] **T-001** GitHub 레포지토리 생성 확인 (main 브랜치 단일 운용)
+- [x] **T-002** 모노레포 디렉토리 구조 생성
   ```
   finsight-ai-agent/
   ├── backend/          # Spring Boot
@@ -33,8 +33,8 @@
   ├── docs/             # PRD, TECH_STACK, TASK
   └── docker-compose.yml
   ```
-- [ ] **T-003** `.gitignore` 설정 (Java, Python, 환경변수 파일 제외)
-- [ ] **T-004** `README.md` 초안 작성 (프로젝트 개요, 실행 방법)
+- [x] **T-003** `.gitignore` 설정 (Java, Python, 환경변수 파일 제외)
+- [x] **T-004** `README.md` 초안 작성 (프로젝트 개요, 실행 방법)
 
 ### Epic 0-2. 로컬 개발 환경 구성
 
