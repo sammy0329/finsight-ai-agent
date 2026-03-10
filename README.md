@@ -12,21 +12,29 @@
 flowchart TD
     Client["Client (Browser)"]
 
+    subgraph Vercel["Vercel"]
+        NX["Next.js (App Router)\n/app · /api/insight"]
+    end
+
+    subgraph Supabase["Supabase Cloud"]
+        SA["Auth"]
+        SDB["PostgreSQL\nprofiles · insight_history"]
+    end
+
     subgraph EC2["AWS EC2 — Docker Compose"]
         direction LR
-        SB["Spring Boot :8080"]
         FA["FastAPI :8000"]
         Chroma["ChromaDB :8001"]
     end
 
-    RDS["AWS RDS MySQL"]
     GHA["GitHub Actions\n매일 16:30 KST"]
     OpenAI["OpenAI\nGPT-4o-mini · Embeddings"]
 
-    Client -->|HTTPS| SB
-    SB --> FA
+    Client -->|HTTPS| NX
+    NX --> SA
+    NX --> SDB
+    NX -->|X-Internal-Key| FA
     FA --> Chroma
-    SB --> RDS
     GHA --> Chroma
     FA --> OpenAI
 ```
@@ -37,10 +45,10 @@ flowchart TD
 
 | 레이어 | 기술 |
 |---|---|
-| Main Backend | Java 17 · Spring Boot 3 · Spring Security · JPA |
+| Frontend & BFF | TypeScript · Next.js 14 (App Router) · Tailwind CSS · Vercel |
+| 인증 / DB | Supabase Auth · Supabase PostgreSQL |
 | AI Backend | Python 3.11 · FastAPI · LangChain · ChromaDB |
 | LLM / Embedding | OpenAI GPT-4o-mini · text-embedding-3-small |
-| Database | MySQL 8 (AWS RDS) · ChromaDB (Vector DB) |
 | Pipeline | GitHub Actions (cron) · FinanceDataReader · OpenDart · Naver API |
 | Infra | AWS EC2 · Docker Compose |
 
@@ -50,7 +58,11 @@ flowchart TD
 
 ```
 finsight-ai-agent/
-├── backend/          # Spring Boot 메인 백엔드
+├── frontend/         # Next.js 14 프론트엔드 + API Route
+│   └── app/
+│       ├── (auth)/   # 로그인/회원가입 페이지
+│       ├── api/      # API Route (/api/insight)
+│       └── ...       # 인사이트, 이력, 설정 페이지
 ├── ai-server/        # FastAPI AI 에이전트 서버
 │   └── app/
 │       ├── api/      # 라우터
@@ -69,6 +81,7 @@ finsight-ai-agent/
 
 ### 사전 준비
 
+- Node.js 20+
 - Docker / Docker Compose
 - Python 3.11+
 - Poetry (Python 패키지 매니저)
@@ -94,8 +107,13 @@ cp .env.example .env   # .env 값 채우기
 # Python 의존성 설치
 cd ai-server && poetry install && cd ..
 
-# 인프라 실행
-docker compose up -d chromadb
+# ChromaDB + FastAPI 실행 (Docker Compose)
+docker compose up -d
+
+# Next.js 개발 서버 실행
+cd frontend
+npm install
+npm run dev
 ```
 
 ### 파이프라인 수동 실행
@@ -111,8 +129,7 @@ CHROMA_HOST=localhost CHROMA_PORT=8001 PIPELINE_MARKET=KOR \
 
 | 서비스 | URL |
 |---|---|
-| Spring Boot API | http://localhost:8080 |
-| Swagger UI | http://localhost:8080/swagger-ui.html |
+| Next.js | http://localhost:3000 |
 | FastAPI Docs | http://localhost:8000/docs |
 
 ---

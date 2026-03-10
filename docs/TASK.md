@@ -26,7 +26,7 @@
 - [x] **T-002** 모노레포 디렉토리 구조 생성
   ```
   finsight-ai-agent/
-  ├── backend/          # Spring Boot
+  ├── frontend/         # Next.js (App Router, TypeScript)
   ├── ai-server/        # FastAPI
   ├── pipeline/         # 수집·정제 스크립트
   ├── docker/           # Dockerfile 모음
@@ -38,7 +38,7 @@
 
 ### Epic 0-2. 로컬 개발 환경 구성
 
-- [x] **T-005** `docker-compose.yml` 작성 (mysql, chromadb, spring-boot, fastapi 4개 서비스)
+- [x] **T-005** `docker-compose.yml` 작성 (fastapi, chromadb 2개 서비스 — EC2 배포용)
 - [x] **T-006** `.env.example` 파일 작성 (포트, API Key, DB 패스워드 등 전체 환경변수 목록)
 - [x] **T-007** Docker Compose 전체 실행 및 각 서비스 헬스체크 확인
 
@@ -174,58 +174,43 @@
 
 ---
 
-## Phase 3. Spring Boot 메인 백엔드 구현
+## Phase 3. Next.js + Supabase 프론트엔드 구현
 
-> **목표:** 사용자 인증, 세그먼트 관리, FastAPI 연동 API를 구현하여 클라이언트 요청을 처리한다.
+> **목표:** Supabase 인증과 Next.js App Router로 사용자 인터페이스를 구현하고 Vercel에 배포한다.
 
-### Epic 3-1. Spring Boot 프로젝트 초기화
+### Epic 3-1. 프로젝트 초기화 및 환경 설정
 
-- [ ] **T-301** Spring Initializr로 프로젝트 생성 (Java 17, Spring Boot 3.x, Gradle)
-  - 의존성: Web, JPA, Security, WebFlux, MySQL Driver, SpringDoc
-- [ ] **T-302** 레이어드 아키텍처 패키지 구조 설정
-  ```
-  backend/src/main/java/com.finsight/
-  ├── domain/user/       # Entity, Repository, Service
-  ├── domain/insight/
-  ├── api/               # Controller, DTO
-  ├── infra/ai/          # FastAPI 통신 클라이언트
-  └── common/            # 공통 예외, 응답 형식
-  ```
-- [ ] **T-303** `application.yml` 환경별 프로파일 설정 (`local`, `prod`)
-- [ ] **T-304** Checkstyle 설정 적용
+- [ ] **T-301** Next.js 14 프로젝트 생성 (App Router, TypeScript, Tailwind CSS)
+- [ ] **T-302** Supabase 프로젝트 생성 및 환경변수 설정
+- [ ] **T-303** Supabase 테이블 스키마 생성 (profiles, insight_history)
+- [ ] **T-304** Vercel 프로젝트 연결 및 환경변수 등록
 
-### Epic 3-2. 데이터베이스 설계 및 구현
+### Epic 3-2. 인증 구현
 
-- [ ] **T-305** MySQL DDL 작성 및 JPA Entity 구현
-  - `users`, `user_profiles`, `insight_history` 테이블
-- [ ] **T-306** `UserRepository`, `UserProfileRepository` 구현 (Spring Data JPA)
-- [ ] **T-307** `schema.sql` 또는 Flyway로 DB 마이그레이션 관리
+- [ ] **T-305** Supabase Auth 이메일/패스워드 로그인 구현
+- [ ] **T-306** 로그인/회원가입 페이지 구현 (/login)
+- [ ] **T-307** 세그먼트 선택 온보딩 구현 (최초 로그인 시 A/B/C 선택)
+- [ ] **T-308** 미들웨어 기반 인증 라우트 보호 (middleware.ts)
 
-### Epic 3-3. 사용자 인증 구현
+### Epic 3-3. 인사이트 화면 구현
 
-- [ ] **T-308** 회원가입 API 구현 (`POST /api/auth/signup`)
-  - BCrypt 패스워드 해시 저장
-- [ ] **T-309** 로그인 API 구현 (`POST /api/auth/login`)
-  - Access Token (30분) + Refresh Token (7일) 발급
-- [ ] **T-310** JWT 필터 구현 (`JwtAuthenticationFilter`)
-- [ ] **T-311** Refresh Token 재발급 API 구현 (`POST /api/auth/refresh`)
-- [ ] **T-312** 사용자 세그먼트 조회·수정 API 구현 (`GET/PUT /api/users/me/profile`)
+- [ ] **T-309** FastAPI 호출 프록시 API Route 구현 (/api/insight)
+  - Supabase에서 사용자 세그먼트 조회 → FastAPI POST 호출
+- [ ] **T-310** 인사이트 메인 페이지 구현 (/)
+  - 질문 입력 폼 + 스트리밍 응답 출력
+- [ ] **T-311** 세그먼트별 UI 테마 분기 (A: 파란/안전, B: 빨강/공격, C: 초록/가치)
+- [ ] **T-312** 인사이트 이력 저장 (insight_history 테이블)
 
-### Epic 3-4. AI 인사이트 API 구현
+### Epic 3-4. 이력 및 설정 화면
 
-- [ ] **T-313** FastAPI 통신 클라이언트 구현 (`AiServerClient`, WebClient 기반)
-  - `X-Internal-Key` 헤더 자동 주입, 타임아웃 10초 설정
-- [ ] **T-314** 인사이트 요청 API 구현 (`GET /api/insight`)
-  - DB에서 사용자 세그먼트 조회 → FastAPI 호출 → 응답 반환
-- [ ] **T-315** 인사이트 이력 저장 로직 구현 (`insight_history` 테이블)
-- [ ] **T-316** FastAPI 서버 장애 시 폴백 처리 (마지막 캐시 응답 반환)
+- [ ] **T-313** 이력 페이지 구현 (/history) — 이전 질문/응답 목록
+- [ ] **T-314** 프로필/세그먼트 변경 페이지 (/settings)
 
-### Epic 3-5. 통합 테스트
+### Epic 3-5. 배포
 
-- [ ] **T-317** 회원가입 → 로그인 → 인사이트 요청 전체 플로우 통합 테스트
-- [ ] **T-318** MockMvc 기반 Controller 단위 테스트
-- [ ] **T-319** `AiServerClient` WireMock 기반 테스트 (FastAPI 모킹)
-- [ ] **T-320** Swagger UI에서 전체 API 수동 검증
+- [ ] **T-315** Vercel 배포 및 도메인 연결
+- [ ] **T-316** FastAPI EC2 CORS 설정 (Vercel 도메인 허용)
+- [ ] **T-317** E2E 배포 검증 (로그인 → 인사이트 생성 전체 플로우)
 
 ---
 
@@ -271,7 +256,7 @@ flowchart TD
     P0["Phase 0\n프로젝트 초기 설정"]
     P1["Phase 1\n데이터 파이프라인"]
     P2["Phase 2\nRAG 에이전트"]
-    P3["Phase 3\nSpring Boot 백엔드"]
+    P3["Phase 3\nNext.js + Supabase 프론트엔드"]
     P4["Phase 4\n품질 평가 및 최적화"]
 
     P0 --> P1
@@ -281,6 +266,6 @@ flowchart TD
     P3 --> P4
 ```
 
-> Phase 1(파이프라인)과 Phase 3(Spring Boot)는 Phase 0 완료 후 **병렬 진행 가능**.
+> Phase 1(파이프라인)과 Phase 3(Next.js + Supabase)는 Phase 0 완료 후 **병렬 진행 가능**.
 > Phase 2(RAG 에이전트)는 Phase 1의 ChromaDB 적재 완료 후 시작.
 > Phase 4는 Phase 2, 3 모두 완료 후 진행.

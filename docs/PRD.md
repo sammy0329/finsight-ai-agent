@@ -10,7 +10,7 @@
 
 - **배경:** 넘쳐나는 금융 정보 속에서 고객은 자신의 투자 성향에 맞는 유의미한 정보를 찾기 어려워함. 초개인화된 자산 관리 서비스의 필요성 대두.
 - **비즈니스 목표:** 고객 세그멘테이션에 따른 맞춤형 정보 제공으로 고객 인게이지먼트 향상 및 증권사 플랫폼 체류 시간 증대.
-- **기술적 목표:** Spring Boot(메인 비즈니스)와 Python FastAPI(AI 에이전트) 간의 원활한 API 연계 아키텍처 설계 및 일 단위 자동화 데이터 파이프라인 구축.
+- **기술적 목표:** Next.js와 FastAPI 간의 API 연계, Supabase 인증 및 DB 관리, 일 단위 자동화 데이터 파이프라인 구축.
 
 ---
 
@@ -30,10 +30,10 @@
 
 | 요구사항 ID | 기능명 | 설명 | 담당 시스템 |
 |---|---|---|---|
-| **FR-01** | **사용자 프로필 관리** | 사용자의 기본 정보 및 투자 성향(A/B/C) 데이터를 저장하고 관리함. | Spring Boot (DB 연동) |
+| **FR-01** | **사용자 프로필 관리** | 사용자의 기본 정보 및 투자 성향(A/B/C) 데이터를 저장하고 관리함. | Next.js + Supabase (profiles 테이블) |
 | **FR-02** | **금융 데이터 파이프라인** | 매일 장 마감 후(16:30), 주가 지표 및 주요 경제/종목 뉴스를 자동 수집함. (KOR/US 시장) | Python (GitHub Actions) |
 | **FR-03** | **데이터 정제 및 벡터화** | 수집된 뉴스/공시 텍스트를 청킹(Chunking)하고 임베딩하여 메타데이터와 함께 Vector DB에 적재함. | Python (FastAPI/ChromaDB) |
-| **FR-04** | **맞춤형 AI 인사이트 요청** | 클라이언트가 인사이트를 요청하면, 사용자의 세그먼트 정보를 포함하여 AI 서버로 분석을 요청함. | Spring Boot (내부 API 호출) |
+| **FR-04** | **맞춤형 AI 인사이트 요청** | 클라이언트가 인사이트를 요청하면, Supabase에서 사용자 세그먼트를 조회하여 FastAPI AI 서버로 분석을 요청함. | Next.js API Route (`/api/insight`) |
 | **FR-05** | **RAG 기반 에이전트 추론** | Vector DB에서 관련 뉴스를 검색하고, 전달받은 사용자 세그먼트(성향)에 맞춘 프롬프트를 적용하여 답변을 생성함. | Python (FastAPI/LangChain) |
 
 ---
@@ -90,9 +90,9 @@
 
 ### 7. 시스템 아키텍처 및 기술 스택
 
-**Main Backend (Java / Spring Boot)**
-- 역할: 사용자 인증, 회원 DB 관리, 클라이언트 API 제공, AI 서버와의 통신 지휘
-- 기술: Spring Boot, Spring Data JPA, MySQL (또는 PostgreSQL), RESTful API
+**Frontend & BFF (TypeScript / Next.js)**
+- 역할: 사용자 인증(Supabase Auth), 회원 DB 관리, 클라이언트 UI 제공, FastAPI와의 통신 지휘
+- 기술: Next.js 14 App Router, TypeScript, Supabase Auth, Supabase PostgreSQL, Vercel 배포
 
 **AI & Data Backend (Python / FastAPI)**
 - 역할: 금융 데이터 수집/전처리, Vector DB 관리, LLM 에이전트 실행 및 서빙
@@ -106,15 +106,15 @@
 
 ### 8. 주요 API 연계 흐름 (Sequence 요약)
 
-1. **Client:** Spring Boot로 "오늘의 추천 인사이트 보여줘" 요청 (사용자 토큰 포함)
-2. **Spring Boot:** DB에서 해당 사용자가 `안전추구형(A형)`임을 확인
-3. **Spring Boot → FastAPI:** `POST /api/ai/insight` 호출
+1. **Client:** Next.js 페이지에서 "오늘의 추천 인사이트 보여줘" 요청
+2. **Next.js API Route (`/api/insight`):** Supabase에서 해당 사용자가 `안전추구형(A형)`임을 확인
+3. **Next.js → FastAPI:** `POST /api/ai/insight` 호출
    ```json
    { "user_segment": "A", "query": "오늘의 주요 시장 이슈 요약" }
    ```
 4. **FastAPI (AI):** ChromaDB에서 오늘 수집된 뉴스 검색 → 세그먼트 A에 맞는 시스템 프롬프트 적용 → LLM 답변 생성
-5. **FastAPI → Spring Boot:** 마크다운 형태의 인사이트 텍스트 반환
-6. **Spring Boot → Client:** 최종 데이터 전달
+5. **FastAPI → Next.js:** 마크다운 형태의 인사이트 텍스트 반환
+6. **Next.js → Client:** 최종 데이터 전달 + `insight_history` 테이블에 이력 저장
 
 ---
 
@@ -137,5 +137,5 @@
 |---|---|---|---|
 | **Phase 1** | 1주차 | 데이터 파이프라인 구축 | 수집 → 정제 → 벡터화 자동화 완료, ChromaDB 적재 확인 |
 | **Phase 2** | 2주차 | RAG 에이전트 구현 | 세그먼트별 프롬프트 설계, LangChain 체인 구성, 단위 테스트 |
-| **Phase 3** | 3주차 | Spring Boot 연동 | 내부 API 연계, JWT 인증 흐름, 통합 테스트 |
+| **Phase 3** | 3주차 | Next.js + Supabase 프론트엔드 | Supabase 인증, 인사이트 UI, Vercel 배포 |
 | **Phase 4** | 4주차 | 품질 평가 및 최적화 | 평가 지표 측정, 청킹/임베딩 파라미터 튜닝, 최종 문서화 |

@@ -11,25 +11,23 @@
 flowchart TD
     Client["Client (Browser)"]
 
-    subgraph SpringBoot["Main Backend — Spring Boot (Java 17)"]
+    subgraph Vercel["Frontend & BFF — Next.js (Vercel)"]
         direction LR
-        Auth["사용자 인증 / JWT"]
-        UserDB["회원 · 세그먼트 DB 관리"]
-        ClientAPI["클라이언트 REST API"]
-        InternalCall["AI 서버 통신 (WebClient)"]
+        Pages["UI 페이지\n/login · / · /history · /settings"]
+        APIRoute["/api/insight\nFastAPI 프록시 API Route"]
+        SupabaseSDK["Supabase SDK\n인증 + DB 조회"]
     end
 
-    subgraph FastAPI["AI & Data Backend — FastAPI (Python 3.11)"]
+    subgraph Supabase["Supabase (Cloud)"]
         direction LR
-        RAG["RAG 에이전트 (LangChain)"]
-        Prompt["세그먼트별 프롬프트 분기"]
-        VectorMgr["Vector DB 관리"]
+        SupabaseAuth["Auth\n이메일/패스워드"]
+        SupabaseDB["PostgreSQL\nprofiles · insight_history"]
     end
 
-    subgraph Storage["Storage"]
+    subgraph EC2["AWS EC2 — Docker Compose"]
         direction LR
-        MySQL["MySQL 8\n(users, profiles, history)"]
-        ChromaDB["ChromaDB\n(financial_news_kor/us)"]
+        FA["FastAPI\n:8000"]
+        Chroma["ChromaDB\n:8001"]
     end
 
     subgraph ExternalAPIs["External APIs"]
@@ -48,19 +46,18 @@ flowchart TD
         Notify["⑥ Notify\n실패 시 Slack 알림"]
     end
 
-    Client -->|"REST (JWT)"| ClientAPI
-    ClientAPI --> Auth
-    ClientAPI --> UserDB
-    UserDB --> MySQL
-    ClientAPI --> InternalCall
-    InternalCall -->|"POST /api/ai/insight\n(X-Internal-Key)"| RAG
-    RAG --> Prompt
-    Prompt --> VectorMgr
-    VectorMgr -->|"유사도 검색"| ChromaDB
-    RAG -->|"LLM 호출"| LLM
+    Client --> Pages
+    Pages --> APIRoute
+    Pages --> SupabaseSDK
+    SupabaseSDK --> SupabaseAuth
+    SupabaseSDK --> SupabaseDB
+    APIRoute -->|"세그먼트 조회"| SupabaseDB
+    APIRoute -->|"POST /api/ai/insight\n(X-Internal-Key)"| FA
+    FA --> Chroma
+    FA -->|"LLM 호출"| LLM
     Embed -->|"임베딩 생성"| Embedding
 
-    Collect --> Preprocess --> Chunk --> Embed --> Load --> ChromaDB
+    Collect --> Preprocess --> Chunk --> Embed --> Load --> Chroma
     Load -->|"실패"| Notify
 ```
 
@@ -71,24 +68,25 @@ flowchart TD
 ```mermaid
 sequenceDiagram
     actor Client
-    participant SB as Spring Boot
-    participant MySQL
+    participant NX as Next.js (Vercel)
+    participant SB as Supabase DB
     participant FA as FastAPI
     participant Chroma as ChromaDB
     participant LLM as OpenAI GPT-4o-mini
 
-    Client->>SB: GET /api/insight (JWT 포함)
-    SB->>MySQL: 사용자 세그먼트 조회
-    MySQL-->>SB: segment = "A" (안전추구형)
+    Client->>NX: POST /api/insight (세션 쿠키)
+    NX->>SB: profiles 테이블에서 사용자 세그먼트 조회
+    SB-->>NX: segment = "A" (안전추구형)
 
-    SB->>FA: POST /api/ai/insight\n{"user_segment":"A","query":"시장 이슈 요약"}
+    NX->>FA: POST /api/ai/insight\n{"user_segment":"A","query":"시장 이슈 요약"}\n(X-Internal-Key)
     FA->>Chroma: 유사도 검색 (market=KOR, date=today)
     Chroma-->>FA: Top-5 관련 청크 반환
     FA->>LLM: 세그먼트 A 시스템 프롬프트 + 청크 컨텍스트
     LLM-->>FA: 마크다운 인사이트 텍스트
 
-    FA-->>SB: {"insight": "..."}
-    SB-->>Client: 최종 인사이트 응답
+    FA-->>NX: {"insight": "..."}
+    NX->>SB: insight_history 테이블에 이력 저장
+    NX-->>Client: 최종 인사이트 응답
 ```
 
 ---
@@ -121,29 +119,55 @@ flowchart LR
 
 ---
 
-## 1. Main Backend — Spring Boot
+## 1. Frontend & BFF — Next.js
 
 | 항목 | 기술 | 버전 | 선택 근거 |
 |---|---|---|---|
-| Language | Java | 17 LTS | Record, Sealed class 등 현대적 문법 지원 |
-| Framework | Spring Boot | 3.x | 자동 설정, 풍부한 생태계, 금융권 실무 표준 |
-| ORM | Spring Data JPA + Hibernate | Boot 내장 | 객체-관계 매핑 자동화, JPQL 활용 |
-| Database | MySQL | 8.x | 금융 트랜잭션 데이터에 적합한 RDBMS |
-| 인증 | Spring Security + JWT | - | Stateless 인증, MSA 환경 토큰 기반 관리 |
-| API 문서화 | SpringDoc OpenAPI (Swagger) | 2.x | REST API 명세 자동 생성 |
-| HTTP Client | WebClient (Spring WebFlux) | Boot 내장 | FastAPI와의 비동기 내부 통신 |
-| 빌드 도구 | Gradle | 8.x | 빠른 빌드, Kotlin DSL 지원 |
+| Language | TypeScript | 5.x | 정적 타입, 대규모 코드베이스 안전성 |
+| Framework | Next.js | 14 (App Router) | SSR/SSG 지원, API Route로 BFF 역할 겸임 |
+| 인증 | Supabase Auth | - | 이메일/패스워드 인증, 세션 관리 내장 |
+| Database Client | Supabase SDK | 2.x | profiles · insight_history 테이블 CRUD |
+| 스타일링 | Tailwind CSS | 3.x | 빠른 UI 개발, 세그먼트별 테마 분기 용이 |
+| 배포 | Vercel | - | Next.js 최적화 플랫폼, 자동 CI/CD |
+| 라우트 보호 | Next.js middleware.ts | - | 미인증 사용자 /login 리다이렉트 |
 
-```groovy
-// build.gradle
-dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'org.springframework.boot:spring-boot-starter-security'
-    implementation 'org.springframework.boot:spring-boot-starter-webflux'
-    implementation 'io.jsonwebtoken:jjwt-api:0.12.x'
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.x'
-    runtimeOnly 'com.mysql:mysql-connector-j'
+```typescript
+// Supabase 테이블 스키마
+// profiles
+// - user_id  UUID  FK → auth.users (PK)
+// - segment  TEXT  'A' | 'B' | 'C'
+// - created_at TIMESTAMPTZ
+
+// insight_history
+// - id         UUID  PK (gen_random_uuid())
+// - user_id    UUID  FK → auth.users
+// - query      TEXT
+// - response   TEXT
+// - created_at TIMESTAMPTZ
+```
+
+```typescript
+// /api/insight/route.ts  (Next.js API Route)
+import { createServerClient } from '@supabase/ssr'
+
+export async function POST(req: Request) {
+  const supabase = createServerClient(...)
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('segment')
+    .eq('user_id', user.id)
+    .single()
+
+  const res = await fetch(`${process.env.FASTAPI_URL}/api/ai/insight`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Internal-Key': process.env.INTERNAL_API_KEY!,
+    },
+    body: JSON.stringify({ user_segment: profile.segment, query: ... }),
+  })
+  return Response.json(await res.json())
 }
 ```
 
@@ -174,7 +198,6 @@ langchain-openai = "^0.1"
 langchain-chroma = "^0.1"
 chromadb = "^0.5"
 pydantic = "^2.0"
-python-jose = {extras = ["cryptography"], version = "^3.3"}
 httpx = "^0.27"
 ```
 
@@ -214,13 +237,34 @@ jobs:
 
 ## 4. 데이터베이스
 
-### MySQL — 관계형 DB (Spring Boot)
+### Supabase PostgreSQL — 관계형 DB (Next.js)
 
 | 테이블 | 주요 컬럼 | 용도 |
 |---|---|---|
-| `users` | id, email, password_hash, created_at | 사용자 기본 정보 |
-| `user_profiles` | user_id, segment(A/B/C), risk_score | 투자 성향 세그먼트 |
-| `insight_history` | user_id, query, response, created_at | AI 인사이트 요청/응답 이력 |
+| `profiles` | user_id(UUID, FK→auth.users), segment(A/B/C), created_at | 사용자 투자 성향 세그먼트 |
+| `insight_history` | id(UUID), user_id, query, response, created_at | AI 인사이트 요청/응답 이력 |
+
+```sql
+-- profiles
+create table profiles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  segment text not null check (segment in ('A', 'B', 'C')),
+  created_at timestamptz default now()
+);
+
+-- insight_history
+create table insight_history (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  query text not null,
+  response text not null,
+  created_at timestamptz default now()
+);
+
+-- RLS 활성화
+alter table profiles enable row level security;
+alter table insight_history enable row level security;
+```
 
 ### ChromaDB — Vector DB (FastAPI)
 
@@ -248,20 +292,20 @@ jobs:
 
 ```mermaid
 flowchart LR
-    Client -->|"① 로그인 요청"| SB["Spring Boot"]
-    SB -->|"② BCrypt 검증"| MySQL
-    MySQL -->|"③ 사용자 확인"| SB
-    SB -->|"④ Access Token 30분\nRefresh Token 7일"| Client
-    Client -->|"⑤ Bearer Token"| SB
-    SB -->|"⑥ X-Internal-Key\n내부 서비스 인증"| FA["FastAPI"]
+    Client -->|"① 이메일/패스워드 로그인"| NX["Next.js (Vercel)"]
+    NX -->|"② Supabase Auth 호출"| SA["Supabase Auth"]
+    SA -->|"③ 세션 쿠키 발급"| NX
+    NX -->|"④ 세션 쿠키"| Client
+    Client -->|"⑤ 쿠키 포함 요청"| NX
+    NX -->|"⑥ X-Internal-Key\n내부 서비스 인증"| FA["FastAPI"]
 ```
 
 | 항목 | 방식 | 비고 |
 |---|---|---|
-| 사용자 인증 | JWT (Access + Refresh Token) | Access: 30분, Refresh: 7일 |
-| 내부 서비스 통신 | Internal API Key (`X-Internal-Key` 헤더) | Spring Boot ↔ FastAPI 인증 |
-| 민감 정보 관리 | GitHub Actions Secrets / 환경변수 | OpenAI API Key, DB 패스워드 등 |
-| 패스워드 저장 | BCrypt (strength 12) | Spring Security 기본 제공 |
+| 사용자 인증 | Supabase Auth (이메일/패스워드) | 세션 쿠키 기반, Supabase 관리형 |
+| 내부 서비스 통신 | Internal API Key (`X-Internal-Key` 헤더) | Next.js API Route ↔ FastAPI 인증 |
+| 민감 정보 관리 | Vercel 환경변수 / GitHub Actions Secrets | OpenAI API Key, Supabase Service Role Key 등 |
+| 라우트 보호 | Next.js `middleware.ts` | 미인증 사용자 자동 리다이렉트 |
 
 ---
 
@@ -269,18 +313,17 @@ flowchart LR
 
 | 항목 | 기술 | 비고 |
 |---|---|---|
-| 컨테이너화 | Docker + Docker Compose | 로컬 개발 환경 통합 실행 |
+| 컨테이너화 | Docker + Docker Compose | EC2 FastAPI + ChromaDB 실행 |
 | 버전 관리 | Git + GitHub | PR 기반 코드 리뷰 |
-| CI/CD | GitHub Actions | 빌드/테스트 자동화 + 데이터 파이프라인 |
-| API 테스트 | Postman / Swagger UI | 수동 검증 |
+| CI/CD | GitHub Actions | 데이터 파이프라인 자동화 |
+| Frontend 배포 | Vercel | Next.js 자동 빌드 및 배포 |
+| API 테스트 | Postman / Swagger UI (FastAPI) | 수동 검증 |
 | 코드 품질 (Python) | Ruff (Linter), Black (Formatter) | pre-commit hook 적용 |
-| 코드 품질 (Java) | Checkstyle | Google Java Style 준수 |
+| 코드 품질 (TS) | ESLint + Prettier | Next.js 기본 설정 |
 
 ```yaml
-# docker-compose.yml 서비스 구성
+# docker-compose.yml 서비스 구성 (EC2)
 services:
-  mysql:        # port 3306
-  spring-boot:  # port 8080  depends_on: mysql
   fastapi:      # port 8000  depends_on: chromadb
   chromadb:     # port 8001
 ```
@@ -291,10 +334,10 @@ services:
 
 | 레이어 | 선택 기술 | 대안 | 선택 근거 |
 |---|---|---|---|
-| Main Backend | Spring Boot | Django, NestJS | Java 생태계의 금융권 표준, 강력한 Spring Security |
+| Frontend & BFF | Next.js (Vercel) | Remix, SvelteKit | App Router + API Route로 BFF 겸임, Vercel 배포 최적화 |
+| 인증 / DB | Supabase | Firebase, PlanetScale | PostgreSQL + Auth + RLS 통합, 무료 티어 충분 |
 | AI Backend | FastAPI | Flask, Django | 비동기 네이티브, Pydantic 자동 검증, LangChain과 궁합 |
 | Vector DB | ChromaDB | Pinecone, Weaviate | 로컬 실행 가능, 무료, 메타데이터 필터 지원 |
 | Embedding | text-embedding-3-small | text-embedding-ada-002 | 비용 5배 절감, 성능 동등 |
 | LLM | GPT-4o-mini | GPT-4o, Claude 3.5 Sonnet | 비용 효율적, RAG 기반이므로 컨텍스트 보완 가능 |
 | Pipeline | GitHub Actions | Airflow, Prefect | 별도 인프라 불필요, 프로젝트 규모에 적합 |
-| RDBMS | MySQL | PostgreSQL | 범용성, 관리 용이성, 금융 트랜잭션 처리 |
