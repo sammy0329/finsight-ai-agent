@@ -38,9 +38,9 @@
 
 ### Epic 0-2. 로컬 개발 환경 구성
 
-- [ ] **T-005** `docker-compose.yml` 작성 (mysql, chromadb, spring-boot, fastapi 4개 서비스)
-- [ ] **T-006** `.env.example` 파일 작성 (포트, API Key, DB 패스워드 등 전체 환경변수 목록)
-- [ ] **T-007** Docker Compose 전체 실행 및 각 서비스 헬스체크 확인
+- [x] **T-005** `docker-compose.yml` 작성 (mysql, chromadb, spring-boot, fastapi 4개 서비스)
+- [x] **T-006** `.env.example` 파일 작성 (포트, API Key, DB 패스워드 등 전체 환경변수 목록)
+- [x] **T-007** Docker Compose 전체 실행 및 각 서비스 헬스체크 확인
 
 ---
 
