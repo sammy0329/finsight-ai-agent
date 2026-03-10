@@ -132,8 +132,8 @@
 
 ### Epic 2-1. FastAPI 서버 기반 구성
 
-- [ ] **T-201** FastAPI 앱 초기화 및 라우터 구조 설정
-- [ ] **T-202** 요청/응답 Pydantic 스키마 정의
+- [x] **T-201** FastAPI 앱 초기화 및 라우터 구조 설정
+- [x] **T-202** 요청/응답 Pydantic 스키마 정의
   ```python
   class InsightRequest(BaseModel):
       user_segment: Literal["A", "B", "C"]
@@ -143,8 +143,8 @@
       insight: str
       sources: list[str]
   ```
-- [ ] **T-203** 내부 서비스 인증 미들웨어 구현 (`X-Internal-Key` 헤더 검증)
-- [ ] **T-204** `/health` 엔드포인트 구현 (Docker 헬스체크용)
+- [x] **T-203** 내부 서비스 인증 미들웨어 구현 (`X-Internal-Key` 헤더 검증)
+- [x] **T-204** `/health` 엔드포인트 구현 (Docker 헬스체크용)
 
 ### Epic 2-2. 세그먼트별 프롬프트 설계
 
