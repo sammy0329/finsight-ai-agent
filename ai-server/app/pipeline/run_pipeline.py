@@ -57,20 +57,21 @@ def run_pipeline(config: dict) -> dict:
     # 1. 수집
     try:
         if config["market"] == "KOR":
-            raw_items = fetch_naver_news_multi(
+            fetched = fetch_naver_news_multi(
                 queries=KOR_QUERIES,
                 client_id=config["naver_client_id"],
                 client_secret=config["naver_client_secret"],
                 date=config["date"].replace("-", ""),
             )
-            raw_items = deduplicate_by_url(raw_items, "link")
+            raw_items = deduplicate_by_url(fetched, "link")
         else:
-            raw_items = fetch_us_news_multi(
+            fetched = fetch_us_news_multi(
                 queries=US_QUERIES,
                 api_key=config["news_api_key"],
                 date=config["date"],
             )
-            raw_items = deduplicate_by_url(raw_items, "url")
+            raw_items = deduplicate_by_url(fetched, "url")
+        stats["deduplicated"] = len(fetched) - len(raw_items)
         stats["collected"] = len(raw_items)
     except Exception:
         logger.exception("뉴스 수집 실패")

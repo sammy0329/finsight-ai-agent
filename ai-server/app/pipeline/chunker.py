@@ -3,6 +3,8 @@
 텍스트를 일정 크기의 청크로 분할하고, 뉴스 항목을 청킹하여 메타데이터와 함께 반환한다.
 """
 
+import hashlib
+
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
@@ -49,9 +51,13 @@ def chunk_news_item(item: dict, metadata: dict) -> list[dict]:
     full_text = "\n".join(parts)
     chunks = chunk_text(full_text)
 
+    url = item.get("link") or item.get("url") or item.get("originallink", "")
+    url_hash = hashlib.sha256(url.encode()).hexdigest()[:8] if url else "nourl"
+
     result = []
     for i, doc in enumerate(chunks):
-        chunk_id = f"{metadata['source']}_{hash(doc)}_{i}"
+        doc_hash = hashlib.sha256(doc.encode()).hexdigest()[:8]
+        chunk_id = f"{metadata['source']}_{url_hash}_{doc_hash}_{i}"
         chunk_metadata = {**metadata, "chunk_index": i}
         result.append(
             {
