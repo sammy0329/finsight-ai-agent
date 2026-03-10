@@ -28,6 +28,7 @@ httpx = "^0.28"
 ruff = "^0.9"
 black = "^25.0"
 pre-commit = "^4.0"
+pytest-cov = "^7.0.0"
 
 [build-system]
 requires = ["poetry-core"]
@@ -39,7 +40,7 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W"]
-ignore = ["E501"]
+ignore = ["E501", "N813"]  # N813: FinanceDataReader as fdr 허용
 
 [tool.black]
 line-length = 100
