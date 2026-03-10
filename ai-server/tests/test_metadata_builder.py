@@ -179,6 +179,12 @@ class TestBuildNewsMetadata:
         meta = build_news_metadata(self.SAMPLE_ITEM, "naver_news", "KOR")
         assert meta["collected_at"] == "2025-03-10T16:35:00"
 
+    def test_category_from_item(self):
+        """item에 category가 있으면 해당 값을 사용한다."""
+        item = {**self.SAMPLE_ITEM, "category": "semiconductor"}
+        meta = build_news_metadata(item, "naver_news", "KOR")
+        assert meta["category"] == "semiconductor"
+
     def test_missing_pubdate_handled(self):
         """pubDate가 없는 항목도 처리한다."""
         item = {"title": "테스트", "link": "http://a"}

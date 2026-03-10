@@ -5,6 +5,7 @@ NewsAPI(newsapi.org)를 통해 영어권 뉴스를 수집한다.
 """
 
 import logging
+import time
 
 import requests
 
@@ -13,7 +14,7 @@ logger = logging.getLogger(__name__)
 NEWSAPI_URL = "https://newsapi.org/v2/everything"
 
 
-def fetch_us_news(api_key: str, query: str, date: str) -> list[dict]:
+def fetch_us_news(api_key: str, query: str, date: str, page_size: int = 50) -> list[dict]:
     """NewsAPI를 통해 미국/영어권 뉴스를 수집한다.
 
     Args:
@@ -34,7 +35,7 @@ def fetch_us_news(api_key: str, query: str, date: str) -> list[dict]:
                 "to": date,
                 "language": "en",
                 "sortBy": "publishedAt",
-                "pageSize": 50,
+                "pageSize": page_size,
             },
             timeout=30,
         )
@@ -65,3 +66,34 @@ def fetch_us_news(api_key: str, query: str, date: str) -> list[dict]:
         )
 
     return results
+
+
+def fetch_us_news_multi(
+    queries: list[dict],
+    api_key: str,
+    date: str,
+) -> list[dict]:
+    """여러 쿼리로 US 뉴스를 수집하고 각 기사에 category를 부착한다.
+
+    Args:
+        queries: [{"category": str, "query": str, "page_size": int}, ...]
+        api_key: NewsAPI 인증 키
+        date: 조회 날짜 (YYYY-MM-DD)
+
+    Returns:
+        category가 부착된 뉴스 dict 리스트
+    """
+    all_items: list[dict] = []
+    for i, q in enumerate(queries):
+        if i > 0:
+            time.sleep(1.0)
+        items = fetch_us_news(
+            api_key=api_key,
+            query=q["query"],
+            date=date,
+            page_size=q.get("page_size", 50),
+        )
+        for item in items:
+            item["category"] = q["category"]
+        all_items.extend(items)
+    return all_items

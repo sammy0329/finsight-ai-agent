@@ -103,6 +103,27 @@
 - [x] **T-119** 파이프라인 완료/실패 Slack 알림 연동
 - [!] **T-120** 파이프라인 수동 실행(`workflow_dispatch`) 및 ChromaDB 정상 적재 검증 — EC2 배포 후 실행 필요
 
+### Epic 1-6. 파이프라인 수집 품질 개선
+
+> 단일 쿼리 수집의 편향 문제를 해결하기 위해 시장별 카테고리 쿼리를 세분화하고, 중복 기사 제거 및 메타데이터 카테고리 연동을 구현한다.
+
+- [x] **T-121** 시장별 쿼리 설정 파일 생성 (`query_config.py`)
+  - KOR 8개 쿼리: macro, stock_market, semiconductor, exchange_rate, energy, bio_pharma, real_estate, crypto
+  - US 6개 쿼리: macro, stock_market, semiconductor, energy, big_tech, crypto (pageSize=15, 일 6건 호출)
+- [x] **T-122** 멀티쿼리 수집 래퍼 함수 구현
+  - `news_collector.py`: `fetch_naver_news_multi(queries)` — 쿼리 간 `time.sleep(0.5)`
+  - `newsapi_collector.py`: `fetch_us_news_multi(queries)` — 쿼리 간 `time.sleep(1.0)`
+  - 각 기사에 `category` 필드 부착
+- [x] **T-123** URL 기반 중복 제거 유틸리티 구현 (`dedup.py`)
+  - KOR: `link` 필드 기준, US: `url` 필드 기준
+  - 먼저 수집된 카테고리 우선 보존
+- [x] **T-124** 메타데이터 카테고리 동적 반영 (`metadata_builder.py`)
+  - `category: "general"` 하드코딩 → item의 `category` 필드 참조로 변경
+- [x] **T-125** `run_pipeline.py` 통합 수정
+  - 단일 쿼리 제거 → 멀티쿼리 수집 + 중복 제거 적용
+  - stats에 `deduplicated` 카운터 추가
+- [x] **T-126** 신규 모듈 단위 테스트 작성 (dedup, query_config, multi-fetch)
+
 ---
 
 ## Phase 2. RAG 에이전트 구현

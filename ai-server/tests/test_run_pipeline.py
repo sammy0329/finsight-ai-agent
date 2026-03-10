@@ -11,8 +11,10 @@ def _base_config():
         "market": "KOR",
         "date": "2025-03-10",
         "tickers": ["005930"],
-        "query": "삼성전자",
         "openai_api_key": "test-key",
+        "naver_client_id": "test-naver-id",
+        "naver_client_secret": "test-naver-secret",
+        "news_api_key": "test-news-api-key",
         "chroma_host": "localhost",
         "chroma_port": 8000,
     }
@@ -29,14 +31,14 @@ class TestRunPipelineSuccess:
     @patch("app.pipeline.run_pipeline.chunk_news_item")
     @patch("app.pipeline.run_pipeline.build_news_metadata")
     @patch("app.pipeline.run_pipeline.clean_news_items")
-    @patch("app.pipeline.run_pipeline.fetch_naver_news")
+    @patch("app.pipeline.run_pipeline.fetch_naver_news_multi")
     @patch("app.pipeline.run_pipeline.get_or_create_collection")
     @patch("app.pipeline.run_pipeline.get_chroma_client")
     def test_returns_stats_dict(
         self,
         mock_chroma_client,
         mock_get_collection,
-        mock_fetch_news,
+        mock_fetch_news_multi,
         mock_clean,
         mock_metadata,
         mock_chunk,
@@ -48,7 +50,7 @@ class TestRunPipelineSuccess:
         mock_get_collection.return_value = MagicMock()
 
         # 수집: 3건
-        mock_fetch_news.return_value = [
+        mock_fetch_news_multi.return_value = [
             {"title": "뉴스1", "description": "내용1", "link": "http://a", "pubDate": "2025"},
             {"title": "뉴스2", "description": "내용2", "link": "http://b", "pubDate": "2025"},
             {"title": "뉴스3", "description": "내용3", "link": "http://c", "pubDate": "2025"},
@@ -90,24 +92,24 @@ class TestRunPipelineSuccess:
     @patch("app.pipeline.run_pipeline.chunk_news_item")
     @patch("app.pipeline.run_pipeline.build_news_metadata")
     @patch("app.pipeline.run_pipeline.clean_news_items")
-    @patch("app.pipeline.run_pipeline.fetch_naver_news")
+    @patch("app.pipeline.run_pipeline.fetch_naver_news_multi")
     @patch("app.pipeline.run_pipeline.get_or_create_collection")
     @patch("app.pipeline.run_pipeline.get_chroma_client")
     def test_all_stats_keys_present(
         self,
         mock_chroma_client,
         mock_get_collection,
-        mock_fetch_news,
+        mock_fetch_news_multi,
         mock_clean,
         mock_metadata,
         mock_chunk,
         mock_embed,
         mock_upsert,
     ):
-        """반환 dict에 4개 키가 모두 존재한다."""
+        """반환 dict에 필수 키가 모두 존재한다."""
         mock_chroma_client.return_value = MagicMock()
         mock_get_collection.return_value = MagicMock()
-        mock_fetch_news.return_value = []
+        mock_fetch_news_multi.return_value = []
         mock_clean.return_value = []
         mock_embed.return_value = []
         mock_upsert.return_value = 0
@@ -118,6 +120,7 @@ class TestRunPipelineSuccess:
         assert "cleaned" in result
         assert "chunked" in result
         assert "upserted" in result
+        assert "deduplicated" in result
 
 
 # ================================================================== #
@@ -131,14 +134,14 @@ class TestRunPipelineEmpty:
     @patch("app.pipeline.run_pipeline.chunk_news_item")
     @patch("app.pipeline.run_pipeline.build_news_metadata")
     @patch("app.pipeline.run_pipeline.clean_news_items")
-    @patch("app.pipeline.run_pipeline.fetch_naver_news")
+    @patch("app.pipeline.run_pipeline.fetch_naver_news_multi")
     @patch("app.pipeline.run_pipeline.get_or_create_collection")
     @patch("app.pipeline.run_pipeline.get_chroma_client")
     def test_no_news_collected(
         self,
         mock_chroma_client,
         mock_get_collection,
-        mock_fetch_news,
+        mock_fetch_news_multi,
         mock_clean,
         mock_metadata,
         mock_chunk,
@@ -148,7 +151,7 @@ class TestRunPipelineEmpty:
         """뉴스가 0건 수집되면 모든 통계가 0이다."""
         mock_chroma_client.return_value = MagicMock()
         mock_get_collection.return_value = MagicMock()
-        mock_fetch_news.return_value = []
+        mock_fetch_news_multi.return_value = []
         mock_clean.return_value = []
 
         result = run_pipeline(_base_config())
@@ -170,14 +173,14 @@ class TestRunPipelineErrorRecovery:
     @patch("app.pipeline.run_pipeline.chunk_news_item")
     @patch("app.pipeline.run_pipeline.build_news_metadata")
     @patch("app.pipeline.run_pipeline.clean_news_items")
-    @patch("app.pipeline.run_pipeline.fetch_naver_news")
+    @patch("app.pipeline.run_pipeline.fetch_naver_news_multi")
     @patch("app.pipeline.run_pipeline.get_or_create_collection")
     @patch("app.pipeline.run_pipeline.get_chroma_client")
     def test_collector_failure_returns_zeros(
         self,
         mock_chroma_client,
         mock_get_collection,
-        mock_fetch_news,
+        mock_fetch_news_multi,
         mock_clean,
         mock_metadata,
         mock_chunk,
@@ -187,7 +190,7 @@ class TestRunPipelineErrorRecovery:
         """수집 단계 실패 시 로그 기록 후 0 통계를 반환한다."""
         mock_chroma_client.return_value = MagicMock()
         mock_get_collection.return_value = MagicMock()
-        mock_fetch_news.side_effect = Exception("Network error")
+        mock_fetch_news_multi.side_effect = Exception("Network error")
 
         result = run_pipeline(_base_config())
 
@@ -201,14 +204,14 @@ class TestRunPipelineErrorRecovery:
     @patch("app.pipeline.run_pipeline.chunk_news_item")
     @patch("app.pipeline.run_pipeline.build_news_metadata")
     @patch("app.pipeline.run_pipeline.clean_news_items")
-    @patch("app.pipeline.run_pipeline.fetch_naver_news")
+    @patch("app.pipeline.run_pipeline.fetch_naver_news_multi")
     @patch("app.pipeline.run_pipeline.get_or_create_collection")
     @patch("app.pipeline.run_pipeline.get_chroma_client")
     def test_embed_failure_does_not_crash(
         self,
         mock_chroma_client,
         mock_get_collection,
-        mock_fetch_news,
+        mock_fetch_news_multi,
         mock_clean,
         mock_metadata,
         mock_chunk,
@@ -218,7 +221,7 @@ class TestRunPipelineErrorRecovery:
         """임베딩 단계 실패 시 파이프라인이 중단되지 않는다."""
         mock_chroma_client.return_value = MagicMock()
         mock_get_collection.return_value = MagicMock()
-        mock_fetch_news.return_value = [
+        mock_fetch_news_multi.return_value = [
             {"title": "뉴스", "description": "내용", "link": "http://a", "pubDate": "2025"},
         ]
         mock_clean.return_value = [
@@ -250,14 +253,14 @@ class TestRunPipelineErrorRecovery:
     @patch("app.pipeline.run_pipeline.chunk_news_item")
     @patch("app.pipeline.run_pipeline.build_news_metadata")
     @patch("app.pipeline.run_pipeline.clean_news_items")
-    @patch("app.pipeline.run_pipeline.fetch_naver_news")
+    @patch("app.pipeline.run_pipeline.fetch_naver_news_multi")
     @patch("app.pipeline.run_pipeline.get_or_create_collection")
     @patch("app.pipeline.run_pipeline.get_chroma_client")
     def test_upsert_failure_does_not_crash(
         self,
         mock_chroma_client,
         mock_get_collection,
-        mock_fetch_news,
+        mock_fetch_news_multi,
         mock_clean,
         mock_metadata,
         mock_chunk,
@@ -267,7 +270,7 @@ class TestRunPipelineErrorRecovery:
         """upsert 단계 실패 시 파이프라인이 중단되지 않는다."""
         mock_chroma_client.return_value = MagicMock()
         mock_get_collection.return_value = MagicMock()
-        mock_fetch_news.return_value = [
+        mock_fetch_news_multi.return_value = [
             {"title": "뉴스", "description": "내용", "link": "http://a", "pubDate": "2025"},
         ]
         mock_clean.return_value = [

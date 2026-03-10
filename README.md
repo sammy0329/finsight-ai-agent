@@ -68,16 +68,43 @@ finsight-ai-agent/
 ## 로컬 실행
 
 ### 사전 준비
+
 - Docker / Docker Compose
-- `.env` 파일 작성 (`.env.example` 참고)
+- Python 3.11+
+- Poetry (Python 패키지 매니저)
+
+**Poetry 설치 (최초 1회)**
+
+```bash
+# macOS Homebrew Python을 사용하는 경우 (시스템 Python 3.9 사용 시 설치 오류 발생)
+curl -sSL https://install.python-poetry.org | /opt/homebrew/bin/python3.11 -
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+```
 
 ### 실행
 
 ```bash
 git clone https://github.com/sammy0329/finsight-ai-agent.git
 cd finsight-ai-agent
+
+# 환경변수 설정
 cp .env.example .env   # .env 값 채우기
-docker-compose up -d --build
+
+# Python 의존성 설치
+cd ai-server && poetry install && cd ..
+
+# 인프라 실행
+docker compose up -d chromadb
+```
+
+### 파이프라인 수동 실행
+
+```bash
+cd ai-server
+export $(cat ../.env | grep -v '^#' | xargs)
+CHROMA_HOST=localhost CHROMA_PORT=8001 PIPELINE_MARKET=KOR \
+  poetry run python -m app.pipeline.run_pipeline
 ```
 
 ### 서비스 확인

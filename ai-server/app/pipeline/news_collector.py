@@ -6,6 +6,7 @@ HTML 태그를 제거하고, 오류 발생 시 빈 리스트를 반환한다.
 
 import logging
 import re
+import time
 
 import requests
 
@@ -72,3 +73,36 @@ def fetch_naver_news(
         )
 
     return results
+
+
+def fetch_naver_news_multi(
+    queries: list[dict],
+    client_id: str,
+    client_secret: str,
+    date: str,
+) -> list[dict]:
+    """여러 쿼리로 Naver 뉴스를 수집하고 각 기사에 category를 부착한다.
+
+    Args:
+        queries: [{"category": str, "query": str}, ...]
+        client_id: 네이버 API 클라이언트 ID
+        client_secret: 네이버 API 클라이언트 시크릿
+        date: 조회 날짜 (YYYYMMDD)
+
+    Returns:
+        category가 부착된 뉴스 dict 리스트
+    """
+    all_items: list[dict] = []
+    for i, q in enumerate(queries):
+        if i > 0:
+            time.sleep(0.5)
+        items = fetch_naver_news(
+            client_id=client_id,
+            client_secret=client_secret,
+            query=q["query"],
+            date=date,
+        )
+        for item in items:
+            item["category"] = q["category"]
+        all_items.extend(items)
+    return all_items

@@ -139,12 +139,13 @@ def build_news_metadata(item: dict, source: str, market: str) -> dict:
     # 감성 분석용 텍스트 결합
     analysis_text = " ".join(filter(None, [item.get("title", ""), item.get("description", "")]))
 
+    tickers = extract_tickers(analysis_text, market)
     return {
         "source": source,
         "published_at": item.get("pubDate", ""),
         "collected_at": datetime.now().isoformat(timespec="seconds"),
         "market": market,
-        "related_tickers": extract_tickers(analysis_text, market),
-        "category": "general",
+        "related_tickers": ",".join(tickers),
+        "category": item.get("category", "general"),
         "sentiment": detect_sentiment(analysis_text),
     }

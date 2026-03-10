@@ -15,9 +15,12 @@ from datetime import date
 from app.pipeline.chroma_client import get_chroma_client, get_or_create_collection
 from app.pipeline.chunker import chunk_news_item
 from app.pipeline.cleaner import clean_news_items
+from app.pipeline.dedup import deduplicate_by_url
 from app.pipeline.embedder import embed_documents
 from app.pipeline.metadata_builder import build_news_metadata
-from app.pipeline.news_collector import fetch_naver_news
+from app.pipeline.news_collector import fetch_naver_news_multi
+from app.pipeline.newsapi_collector import fetch_us_news_multi
+from app.pipeline.query_config import KOR_QUERIES, US_QUERIES
 from app.pipeline.vector_store import upsert_chunks
 
 logger = logging.getLogger(__name__)
@@ -41,7 +44,7 @@ def run_pipeline(config: dict) -> dict:
     Returns:
         {"collected": int, "cleaned": int, "chunked": int, "upserted": int}
     """
-    stats = {"collected": 0, "cleaned": 0, "chunked": 0, "upserted": 0}
+    stats = {"collected": 0, "cleaned": 0, "chunked": 0, "upserted": 0, "deduplicated": 0}
 
     # ChromaDB 초기화
     try:
@@ -53,12 +56,21 @@ def run_pipeline(config: dict) -> dict:
 
     # 1. 수집
     try:
-        raw_items = fetch_naver_news(
-            client_id="",
-            client_secret="",
-            query=config["query"],
-            date=config["date"].replace("-", ""),
-        )
+        if config["market"] == "KOR":
+            raw_items = fetch_naver_news_multi(
+                queries=KOR_QUERIES,
+                client_id=config["naver_client_id"],
+                client_secret=config["naver_client_secret"],
+                date=config["date"].replace("-", ""),
+            )
+            raw_items = deduplicate_by_url(raw_items, "link")
+        else:
+            raw_items = fetch_us_news_multi(
+                queries=US_QUERIES,
+                api_key=config["news_api_key"],
+                date=config["date"],
+            )
+            raw_items = deduplicate_by_url(raw_items, "url")
         stats["collected"] = len(raw_items)
     except Exception:
         logger.exception("뉴스 수집 실패")
@@ -128,13 +140,22 @@ if __name__ == "__main__":
     config_base = {
         "date": run_date,
         "tickers": [],
-        "query": "주요 금융 시장 이슈",
         "openai_api_key": os.environ["OPENAI_API_KEY"],
+        "naver_client_id": os.getenv("NAVER_CLIENT_ID", ""),
+        "naver_client_secret": os.getenv("NAVER_CLIENT_SECRET", ""),
+        "dart_api_key": os.getenv("DART_API_KEY", ""),
+        "news_api_key": os.getenv("NEWS_API_KEY", ""),
         "chroma_host": os.getenv("CHROMA_HOST", "localhost"),
         "chroma_port": int(os.getenv("CHROMA_PORT", "8001")),
     }
 
-    total: dict[str, int] = {"collected": 0, "cleaned": 0, "chunked": 0, "upserted": 0}
+    total: dict[str, int] = {
+        "collected": 0,
+        "cleaned": 0,
+        "chunked": 0,
+        "upserted": 0,
+        "deduplicated": 0,
+    }
     success = True
 
     for m in markets:
