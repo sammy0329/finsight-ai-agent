@@ -87,12 +87,12 @@
 
 ### Epic 1-4. 청킹 및 벡터화 모듈 개발
 
-- [ ] **T-111** ChromaDB 클라이언트 초기화 및 컬렉션 생성
+- [x] **T-111** ChromaDB 클라이언트 초기화 및 컬렉션 생성
   - `financial_news_kor`, `financial_news_us` 컬렉션
-- [ ] **T-112** `RecursiveCharacterTextSplitter` 적용 — 500토큰 / 50 오버랩 청킹 구현
-- [ ] **T-113** OpenAI `text-embedding-3-small` 임베딩 모듈 구현
-- [ ] **T-114** ChromaDB `upsert` 모듈 구현 (중복 적재 방지, `id` 기반 멱등성 보장)
-- [ ] **T-115** 전체 파이프라인 통합 실행 스크립트 작성 (`pipeline/run_pipeline.py`)
+- [x] **T-112** `RecursiveCharacterTextSplitter` 적용 — 500토큰 / 50 오버랩 청킹 구현
+- [x] **T-113** OpenAI `text-embedding-3-small` 임베딩 모듈 구현
+- [x] **T-114** ChromaDB `upsert` 모듈 구현 (중복 적재 방지, `id` 기반 멱등성 보장)
+- [x] **T-115** 전체 파이프라인 통합 실행 스크립트 작성 (`pipeline/run_pipeline.py`)
 
 ### Epic 1-5. GitHub Actions 자동화
 
