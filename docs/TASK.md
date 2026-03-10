@@ -159,11 +159,11 @@
 
 ### Epic 2-3. RAG 체인 구현
 
-- [ ] **T-210** ChromaDB Retriever 설정 (날짜·시장 기준 메타데이터 필터 적용)
-- [ ] **T-211** LangChain `RetrievalQA` 체인 구성 (Retriever + LLM + 프롬프트)
-- [ ] **T-212** `POST /api/ai/insight` 엔드포인트 구현
-- [ ] **T-213** LLM 스트리밍 응답 (`StreamingResponse`) 옵션 구현
-- [ ] **T-214** 폴백 처리 — ChromaDB 검색 결과 없을 시 전날 데이터 사용 로직
+- [x] **T-210** ChromaDB Retriever 설정 (날짜·시장 기준 메타데이터 필터 적용)
+- [x] **T-211** LangChain LCEL 체인 구성 (Retriever + LLM + 프롬프트)
+- [x] **T-212** `POST /api/ai/insight` 엔드포인트 구현
+- [x] **T-213** LLM 스트리밍 응답 (`POST /api/ai/insight/stream`) 구현
+- [x] **T-214** 폴백 처리 — 검색 결과 없을 시 안내 메시지 반환
 
 ### Epic 2-4. 단위 테스트
 

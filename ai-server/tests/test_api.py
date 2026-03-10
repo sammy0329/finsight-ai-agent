@@ -5,10 +5,11 @@ import os
 os.environ.setdefault("OPENAI_API_KEY", "test-key")
 os.environ.setdefault("INTERNAL_API_KEY", "test-internal-key")
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
+from langchain_core.documents import Document
 
 from app.main import app
 
@@ -81,8 +82,15 @@ class TestAuthMiddleware:
         )
         assert resp.status_code == 401
 
-    def test_insight_valid_key_returns_200(self, client: TestClient):
+    @patch("app.api.router.invoke_with_fallback", return_value="mock insight")
+    @patch("app.api.router.build_rag_chain")
+    @patch("app.api.router.get_retriever")
+    def test_insight_valid_key_returns_200(
+        self, mock_retriever, mock_chain, mock_invoke, client: TestClient
+    ):
         """올바른 키면 200."""
+        mock_retriever.return_value = MagicMock()
+        mock_retriever.return_value.invoke.return_value = []
         resp = client.post(
             "/api/ai/insight",
             json={"user_segment": "A", "query": "test"},
@@ -98,8 +106,20 @@ class TestInsightEndpoint:
     """POST /api/ai/insight 엔드포인트 테스트."""
 
     @pytest.mark.parametrize("segment", ["A", "B", "C"])
-    def test_valid_segments(self, client: TestClient, segment: str):
+    @patch("app.api.router.invoke_with_fallback")
+    @patch("app.api.router.build_rag_chain")
+    @patch("app.api.router.get_retriever")
+    def test_valid_segments(
+        self, mock_retriever, mock_chain, mock_invoke, client: TestClient, segment: str
+    ):
         """user_segment A/B/C 각각 정상 처리."""
+        mock_invoke.return_value = f"[{segment}] 인사이트 결과"
+        mock_ret = MagicMock()
+        mock_ret.invoke.return_value = [
+            Document(page_content="뉴스", metadata={"source": "https://a.com"}),
+        ]
+        mock_retriever.return_value = mock_ret
+
         resp = client.post(
             "/api/ai/insight",
             json={"user_segment": segment, "query": "테스트 쿼리"},
@@ -129,8 +149,17 @@ class TestInsightEndpoint:
         )
         assert resp.status_code == 422
 
-    def test_response_structure(self, client: TestClient):
+    @patch("app.api.router.invoke_with_fallback", return_value="삼성전자 인사이트")
+    @patch("app.api.router.build_rag_chain")
+    @patch("app.api.router.get_retriever")
+    def test_response_structure(self, mock_retriever, mock_chain, mock_invoke, client: TestClient):
         """응답이 InsightResponse 스키마를 준수."""
+        mock_ret = MagicMock()
+        mock_ret.invoke.return_value = [
+            Document(page_content="뉴스", metadata={"source": "https://a.com"}),
+        ]
+        mock_retriever.return_value = mock_ret
+
         resp = client.post(
             "/api/ai/insight",
             json={"user_segment": "A", "query": "삼성전자 전망"},
