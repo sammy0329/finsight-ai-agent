@@ -50,8 +50,8 @@
 
 ### Epic 1-1. Python 프로젝트 초기화
 
-- [ ] **T-101** Poetry 프로젝트 초기화 및 `pyproject.toml` 의존성 정의
-- [ ] **T-102** 디렉토리 구조 설정
+- [x] **T-101** Poetry 프로젝트 초기화 및 `pyproject.toml` 의존성 정의
+- [x] **T-102** 디렉토리 구조 설정
   ```
   ai-server/
   ├── app/
@@ -61,7 +61,7 @@
   │   └── core/         # 설정, 공통 유틸
   └── tests/
   ```
-- [ ] **T-103** Ruff, Black 설정 및 pre-commit hook 적용
+- [x] **T-103** Ruff, Black 설정 및 pre-commit hook 적용
 
 ### Epic 1-2. 데이터 수집 모듈 개발
 
