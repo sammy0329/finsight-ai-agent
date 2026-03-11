@@ -206,9 +206,12 @@
   - 실시간 검색 + 국내/해외 구분 결과
   - 관심 종목 추가/제거
 - [x] **T-311** 홈 페이지 구현 (/)
-  - 관심 종목 카드 목록 (전일 종가 + 등락률)
-  - 오늘의 시장 요약 배너
-- [ ] **T-312** 관심 종목 CRUD API Route (`/api/watchlist`)
+  - 관심 종목 카드 목록 (Yahoo Finance 실시간 종가 + 등락률)
+  - 오늘의 시장 요약 배너 (Yahoo Finance 실시간: KOSPI, NASDAQ, 원/달러)
+- [x] **T-312** Yahoo Finance 실시간 가격 연동 (`lib/yahoo.ts`)
+  - `fetchPrice` / `fetchPrices` / `fetchMarketSummary` 구현
+  - KOSPI `.KS`, KOSDAQ `.KQ` 티커 변환, `next.revalidate` 캐시 적용
+- [ ] **T-312b** 관심 종목 CRUD API Route (`/api/watchlist`)
 
 ### Epic 3-4. 인사이트 화면 구현
 
@@ -216,7 +219,7 @@
   - watchlist 종목 ticker → ChromaDB `related_tickers` 필터
   - Supabase 세그먼트 조회 → FastAPI POST
 - [x] **T-314** 종목 인사이트 페이지 구현 (/insight/[ticker])
-  - 종목 가격 카드 (전일 종가, 등락률)
+  - 종목 가격 카드 (Yahoo Finance 실시간 종가, 등락률)
   - RAG 인사이트 스트리밍 출력
   - 출처 뉴스 칩
   - 추가 질문 입력창
