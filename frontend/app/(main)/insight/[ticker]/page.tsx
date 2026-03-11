@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import InsightClient from './InsightClient'
 import { type Segment } from '@/types'
+import { fetchPrice } from '@/lib/yahoo'
 
 interface Props {
   params: Promise<{ ticker: string }>
@@ -21,14 +22,9 @@ export default async function InsightPage({ params }: Props) {
   const { data: stock } = await supabase
     .from('stocks').select('ticker, name, market').eq('ticker', ticker).single()
 
-  // 최신 가격
-  const { data: price } = await supabase
-    .from('daily_prices')
-    .select('close, change_pct, date')
-    .eq('ticker', ticker)
-    .order('date', { ascending: false })
-    .limit(1)
-    .single()
+  // Yahoo Finance 실시간 가격
+  const market = stock?.market ?? ''
+  const price = await fetchPrice(ticker, market)
 
   // watchlist 여부
   const { data: wl } = await supabase
@@ -38,7 +34,7 @@ export default async function InsightPage({ params }: Props) {
     <InsightClient
       ticker={ticker}
       stockName={stock?.name ?? ticker}
-      market={stock?.market ?? ''}
+      market={market}
       segment={profile.segment as Segment}
       price={price?.close ?? null}
       changePct={price?.change_pct ?? null}

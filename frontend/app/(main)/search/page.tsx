@@ -30,7 +30,7 @@ export default function SearchPage() {
       setWatchlist(new Set(data?.map(d => d.ticker) ?? []))
     }
     loadWatchlist()
-  }, [])
+  }, [supabase])
 
   const search = useCallback(async (q: string) => {
     if (!q.trim()) { setResults([]); return }

@@ -2,13 +2,13 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { SEGMENT_LABEL, SEGMENT_ICON, type Segment } from '@/types'
+import { fetchPrices, fetchMarketSummary, type PriceData } from '@/lib/yahoo'
 
 export default async function HomePage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // 프로필 조회
   const { data: profile } = await supabase
     .from('profiles')
     .select('segment')
@@ -19,35 +19,25 @@ export default async function HomePage() {
 
   const segment = profile.segment as Segment
 
-  // watchlist + 최신 가격 조회
   const { data: watchlist } = await supabase
     .from('watchlist')
     .select('ticker, name, market, added_at')
     .eq('user_id', user.id)
     .order('added_at', { ascending: false })
 
-  // 가격 데이터 조회
-  const tickers = (watchlist ?? []).map(w => w.ticker)
-  const priceMap: Record<string, { close: number; change_pct: number }> = {}
-  if (tickers.length > 0) {
-    const { data: prices } = await supabase
-      .from('daily_prices')
-      .select('ticker, close, change_pct, date')
-      .in('ticker', tickers)
-      .order('date', { ascending: false })
-
-    // 종목별 최신 가격만
-    prices?.forEach(p => {
-      if (!priceMap[p.ticker]) priceMap[p.ticker] = { close: p.close, change_pct: p.change_pct }
-    })
-  }
+  // Yahoo Finance 실시간 가격 + 시장 요약 병렬 조회
+  const [priceMap, market] = await Promise.all([
+    watchlist && watchlist.length > 0
+      ? fetchPrices(watchlist.map(w => ({ ticker: w.ticker, market: w.market })))
+      : Promise.resolve({} as Record<string, PriceData>),
+    fetchMarketSummary(),
+  ])
 
   const segmentColor: Record<Segment, string> = { A: '#3b82f6', B: '#ef4444', C: '#22c55e' }
   const color = segmentColor[segment]
 
   return (
     <div style={{ color: '#f1f1f1' }}>
-      {/* 헤더 */}
       <div className="flex items-start justify-between px-5 pt-5 pb-3">
         <div>
           <h1 className="text-lg font-bold">안녕하세요 👋</h1>
@@ -63,13 +53,28 @@ export default async function HomePage() {
       <div className="mx-4 mb-4 px-3.5 py-3 rounded-xl" style={{ background: '#1e1e1e', borderLeft: `3px solid ${color}` }}>
         <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: '#555' }}>오늘의 시장</p>
         <p className="text-xs" style={{ color: '#ccc' }}>
-          KOSPI <span style={{ color: '#60a5fa' }}>▼ 0.8%</span> &nbsp;·&nbsp;
-          NASDAQ <span style={{ color: '#60a5fa' }}>▼ 1.1%</span> &nbsp;·&nbsp;
-          원/달러 1,342원
+          {market.kospi ? (
+            <>
+              KOSPI {market.kospi.value.toLocaleString('ko-KR', { maximumFractionDigits: 0 })}{' '}
+              <span style={{ color: market.kospi.change_pct >= 0 ? '#f87171' : '#60a5fa' }}>
+                {market.kospi.change_pct >= 0 ? '▲' : '▼'} {Math.abs(market.kospi.change_pct).toFixed(2)}%
+              </span>
+            </>
+          ) : 'KOSPI —'}
+          &nbsp;·&nbsp;
+          {market.nasdaq ? (
+            <>
+              NASDAQ {market.nasdaq.value.toLocaleString('ko-KR', { maximumFractionDigits: 0 })}{' '}
+              <span style={{ color: market.nasdaq.change_pct >= 0 ? '#f87171' : '#60a5fa' }}>
+                {market.nasdaq.change_pct >= 0 ? '▲' : '▼'} {Math.abs(market.nasdaq.change_pct).toFixed(2)}%
+              </span>
+            </>
+          ) : 'NASDAQ —'}
+          &nbsp;·&nbsp;
+          원/달러 {market.usdkrw ? market.usdkrw.toLocaleString('ko-KR', { maximumFractionDigits: 0 }) + '원' : '—'}
         </p>
       </div>
 
-      {/* 관심 종목 섹션 */}
       <div className="flex items-center justify-between px-5 mb-3">
         <h2 className="text-sm font-semibold">관심 종목</h2>
         <Link href="/search" className="text-xs" style={{ color: '#3b82f6' }}>+ 추가</Link>
@@ -80,6 +85,7 @@ export default async function HomePage() {
           {watchlist.map(stock => {
             const price = priceMap[stock.ticker]
             const isUp = price ? price.change_pct > 0 : null
+            const isUS = stock.market === 'S&P500' || stock.market === 'NASDAQ' || stock.market === 'NYSE'
             return (
               <Link
                 key={stock.ticker}
@@ -95,16 +101,14 @@ export default async function HomePage() {
                   {price ? (
                     <div className="text-right">
                       <p className="font-bold text-sm">
-                        {stock.market === 'NASDAQ' || stock.market === 'NYSE'
-                          ? `$${price.close.toLocaleString()}`
-                          : `${price.close.toLocaleString()}원`}
+                        {isUS ? `$${price.close.toLocaleString()}` : `${price.close.toLocaleString()}원`}
                       </p>
                       <p className="text-xs mt-0.5" style={{ color: isUp ? '#f87171' : '#60a5fa' }}>
                         {isUp ? '▲' : '▼'} {Math.abs(price.change_pct).toFixed(2)}%
                       </p>
                     </div>
                   ) : (
-                    <p className="text-xs" style={{ color: '#444' }}>가격 없음</p>
+                    <p className="text-xs" style={{ color: '#444' }}>조회 중...</p>
                   )}
                 </div>
                 <div className="flex items-center justify-between">
