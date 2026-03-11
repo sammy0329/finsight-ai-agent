@@ -1,0 +1,242 @@
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import { type Segment, SEGMENT_LABEL, SEGMENT_ICON } from '@/types'
+
+const SEGMENT_COLOR: Record<Segment, string> = { A: '#3b82f6', B: '#ef4444', C: '#22c55e' }
+
+const SUGGESTED_QUESTIONS: Record<Segment, string[]> = {
+  A: ['지금 분할 매수 시작해도 될까요?', '배당 관점에서 매력적인가요?', '리스크 요인이 무엇인가요?'],
+  B: ['단기 모멘텀이 있나요?', '지금 진입 타이밍인가요?', '상승 촉매는 무엇인가요?'],
+  C: ['현재 PER/PBR 수준은 어떤가요?', '내재가치 대비 저평가인가요?', '장기 성장성은 어떻게 보나요?'],
+}
+
+interface Props {
+  ticker: string
+  stockName: string
+  market: string
+  segment: Segment
+  price: number | null
+  changePct: number | null
+  priceDate: string | null
+  inWatchlist: boolean
+  userId: string
+}
+
+export default function InsightClient({
+  ticker, stockName, market, segment,
+  price, changePct, priceDate,
+  inWatchlist: initialInWatchlist, userId,
+}: Props) {
+  const router = useRouter()
+  const supabase = createClient()
+  const color = SEGMENT_COLOR[segment]
+  const isUp = changePct != null ? changePct > 0 : null
+
+  const [insight, setInsight] = useState('')
+  const [sources, setSources] = useState<string[]>([])
+  const [loading, setLoading] = useState(false)
+  const [query, setQuery] = useState('')
+  const [inWatchlist, setInWatchlist] = useState(initialInWatchlist)
+
+  async function fetchInsight(q: string) {
+    if (!q.trim()) return
+    setLoading(true)
+    setInsight('')
+    setSources([])
+
+    try {
+      const res = await fetch('/api/insight', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticker, query: q, segment }),
+      })
+
+      if (!res.ok) throw new Error('API 오류')
+
+      const reader = res.body?.getReader()
+      const decoder = new TextDecoder()
+      let fullText = ''
+
+      while (reader) {
+        const { done, value } = await reader.read()
+        if (done) break
+        const chunk = decoder.decode(value)
+        // SSE 파싱
+        chunk.split('\n').forEach(line => {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6)
+            if (data === '[DONE]') return
+            if (data.startsWith('[SOURCES]')) {
+              setSources(JSON.parse(data.slice(9)))
+            } else {
+              fullText += data
+              setInsight(fullText)
+            }
+          }
+        })
+      }
+
+      // 이력 저장
+      await supabase.from('insight_history').insert({
+        user_id: userId,
+        ticker,
+        stock_name: stockName,
+        query: q,
+        answer: fullText,
+        sources,
+      })
+    } catch {
+      setInsight('인사이트를 불러오는 데 실패했습니다. 잠시 후 다시 시도해주세요.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function toggleWatchlist() {
+    if (inWatchlist) {
+      await supabase.from('watchlist').delete().eq('user_id', userId).eq('ticker', ticker)
+    } else {
+      await supabase.from('watchlist').insert({ user_id: userId, ticker, name: stockName, market })
+    }
+    setInWatchlist(!inWatchlist)
+  }
+
+  return (
+    <div style={{ color: '#f1f1f1' }}>
+      {/* 상단 바 */}
+      <div className="flex items-center gap-3 px-5 pt-4 pb-2">
+        <button onClick={() => router.back()}
+          className="w-8 h-8 rounded-xl flex items-center justify-center text-sm"
+          style={{ background: '#1e1e1e' }}>
+          ←
+        </button>
+        <h1 className="text-base font-bold flex-1">{stockName}</h1>
+        <button
+          onClick={toggleWatchlist}
+          className="text-xs px-2.5 py-1 rounded-lg"
+          style={inWatchlist
+            ? { background: '#1e1e1e', border: '1px solid #2a2a2a', color: '#555' }
+            : { background: `${color}1a`, border: `1px solid ${color}4d`, color }}
+        >
+          {inWatchlist ? '★ 등록됨' : '☆ 추가'}
+        </button>
+        <span className="text-xs font-bold px-2 py-0.5 rounded-full"
+          style={{ background: `${color}26`, color, border: `1px solid ${color}4d` }}>
+          {segment}형
+        </span>
+      </div>
+
+      <div className="flex-1 overflow-y-auto scrollbar-hide px-4 pb-4">
+        {/* 가격 카드 */}
+        <div className="p-4 rounded-2xl mb-3.5" style={{ background: '#1e1e1e' }}>
+          <div className="flex justify-between items-start mb-2.5">
+            <div>
+              <p className="text-[11px] mb-1" style={{ color: '#555' }}>{ticker} · {market} · 전일 종가</p>
+              <p className="text-3xl font-bold">
+                {price != null
+                  ? (market === 'NASDAQ' || market === 'NYSE'
+                    ? `$${price.toLocaleString()}`
+                    : `${price.toLocaleString()}원`)
+                  : '—'}
+              </p>
+            </div>
+            {isUp !== null && (
+              <div className="px-2.5 py-1.5 rounded-lg text-sm font-bold"
+                style={isUp
+                  ? { background: 'rgba(248,113,113,0.15)', color: '#f87171' }
+                  : { background: 'rgba(96,165,250,0.15)', color: '#60a5fa' }}>
+                {isUp ? '▲' : '▼'} {Math.abs(changePct!).toFixed(2)}%
+              </div>
+            )}
+          </div>
+          <div className="flex gap-4 text-[11px]" style={{ color: '#555' }}>
+            {changePct != null && (
+              <span>전일 대비 <span style={{ color: isUp ? '#f87171' : '#60a5fa' }}>
+                {isUp ? '+' : ''}{changePct.toFixed(2)}%
+              </span></span>
+            )}
+            {priceDate && <span>기준일 {priceDate}</span>}
+          </div>
+        </div>
+
+        {/* AI 인사이트 */}
+        {insight ? (
+          <div className="mb-3.5">
+            <div className="flex items-center gap-2 mb-2">
+              <h2 className="text-sm font-semibold">AI 인사이트</h2>
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded"
+                style={{ background: 'rgba(139,92,246,0.15)', color: '#a78bfa', border: '1px solid rgba(139,92,246,0.2)' }}>
+                RAG
+              </span>
+              <span className="text-[11px] ml-auto" style={{ color: '#555' }}>{SEGMENT_ICON[segment]} {SEGMENT_LABEL[segment]} 관점</span>
+            </div>
+            <div className="p-3.5 rounded-xl text-sm leading-relaxed" style={{ background: '#1a1a1a', color: '#ccc' }}>
+              {insight}
+              {loading && <span className="cursor-blink" />}
+            </div>
+            {sources.length > 0 && (
+              <div className="mt-2.5">
+                <p className="text-[11px] mb-1.5" style={{ color: '#555' }}>근거 뉴스 출처</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {sources.map((src, i) => (
+                    <span key={i} className="text-[11px] px-2.5 py-1 rounded-full"
+                      style={{ background: '#222', border: '1px solid #2e2e2e', color: '#777' }}>
+                      {src}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : !loading && (
+          <div className="mb-3.5">
+            <h2 className="text-sm font-semibold mb-2">질문 예시</h2>
+            <div className="flex flex-col gap-2">
+              {SUGGESTED_QUESTIONS[segment].map(q => (
+                <button key={q} onClick={() => { setQuery(q); fetchInsight(q) }}
+                  className="text-left text-xs px-3 py-2.5 rounded-xl"
+                  style={{ background: '#1a1a1a', border: '1px solid #222', color: '#777' }}>
+                  {q}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {loading && !insight && (
+          <div className="text-center py-6">
+            <p className="text-sm" style={{ color: '#555' }}>인사이트 생성 중...</p>
+          </div>
+        )}
+      </div>
+
+      {/* 질문 입력창 */}
+      <div className="px-4 py-3" style={{ borderTop: '1px solid #1e1e1e', background: '#141414' }}>
+        <p className="text-[11px] mb-1.5" style={{ color: '#555' }}>이 종목에 대해 더 물어보기</p>
+        <div className="flex gap-2">
+          <input
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { fetchInsight(query); setQuery('') } }}
+            placeholder={`예: ${SUGGESTED_QUESTIONS[segment][0]}`}
+            className="flex-1 px-3.5 py-2.5 rounded-xl text-sm outline-none"
+            style={{ background: '#1e1e1e', border: '1px solid #2e2e2e', color: '#f1f1f1' }}
+          />
+          <button
+            onClick={() => { fetchInsight(query); setQuery('') }}
+            disabled={!query.trim() || loading}
+            className="w-10 h-10 rounded-xl flex items-center justify-center disabled:opacity-40 flex-shrink-0"
+            style={{ background: '#3b82f6' }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}

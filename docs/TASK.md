@@ -176,41 +176,63 @@
 
 ## Phase 3. Next.js + Supabase 프론트엔드 구현
 
-> **목표:** Supabase 인증과 Next.js App Router로 사용자 인터페이스를 구현하고 Vercel에 배포한다.
+> **목표:** 관심 종목 등록·검색, 종목별 AI 인사이트(RAG), 세그먼트 기반 개인화를 갖춘 모바일 퍼스트 웹앱을 구현하고 Vercel에 배포한다.
 
 ### Epic 3-1. 프로젝트 초기화 및 환경 설정
 
-- [ ] **T-301** Next.js 14 프로젝트 생성 (App Router, TypeScript, Tailwind CSS)
-- [ ] **T-302** Supabase 프로젝트 생성 및 환경변수 설정
-- [ ] **T-303** Supabase 테이블 스키마 생성 (profiles, insight_history)
+- [x] **T-301** Next.js 14 프로젝트 생성 (App Router, TypeScript, Tailwind CSS)
+- [x] **T-302** Supabase 프로젝트 생성 및 환경변수 설정 (.env.local)
+- [x] **T-303** Supabase 테이블 스키마 생성
+  - `profiles` (user_id, segment, created_at)
+  - `watchlist` (user_id, ticker, name, market, added_at)
+  - `stocks` (ticker, name, market — KRX + S&P500 종목 목록)
+  - `daily_prices` (ticker, date, close, change_pct — 파이프라인 적재)
+  - `insight_history` (user_id, ticker, query, answer, sources, created_at)
 - [ ] **T-304** Vercel 프로젝트 연결 및 환경변수 등록
 
 ### Epic 3-2. 인증 구현
 
-- [ ] **T-305** Supabase Auth 이메일/패스워드 로그인 구현
-- [ ] **T-306** 로그인/회원가입 페이지 구현 (/login)
-- [ ] **T-307** 세그먼트 선택 온보딩 구현 (최초 로그인 시 A/B/C 선택)
-- [ ] **T-308** 미들웨어 기반 인증 라우트 보호 (middleware.ts)
+- [x] **T-305** Supabase 클라이언트 유틸 설정 (lib/supabase/)
+  - `client.ts` (브라우저용), `server.ts` (서버 컴포넌트용)
+- [x] **T-306** 로그인/회원가입 페이지 구현 (/login) — 슬라이드업 모달 회원가입
+- [x] **T-307** 세그먼트 선택 온보딩 구현 (/onboarding — 최초 로그인 시)
+- [x] **T-308** 미들웨어 기반 인증 라우트 보호 (middleware.ts)
 
-### Epic 3-3. 인사이트 화면 구현
+### Epic 3-3. 관심 종목 기능 구현
 
-- [ ] **T-309** FastAPI 호출 프록시 API Route 구현 (/api/insight)
-  - Supabase에서 사용자 세그먼트 조회 → FastAPI POST 호출
-- [ ] **T-310** 인사이트 메인 페이지 구현 (/)
-  - 질문 입력 폼 + 스트리밍 응답 출력
-- [ ] **T-311** 세그먼트별 UI 테마 분기 (A: 파란/안전, B: 빨강/공격, C: 초록/가치)
-- [ ] **T-312** 인사이트 이력 저장 (insight_history 테이블)
+- [x] **T-309** 종목 검색 API Route 구현 (`/api/stocks/search`)
+  - Supabase `stocks` 테이블 ILIKE 쿼리
+- [x] **T-310** 종목 검색 페이지 구현 (/search)
+  - 실시간 검색 + 국내/해외 구분 결과
+  - 관심 종목 추가/제거
+- [x] **T-311** 홈 페이지 구현 (/)
+  - 관심 종목 카드 목록 (전일 종가 + 등락률)
+  - 오늘의 시장 요약 배너
+- [ ] **T-312** 관심 종목 CRUD API Route (`/api/watchlist`)
 
-### Epic 3-4. 이력 및 설정 화면
+### Epic 3-4. 인사이트 화면 구현
 
-- [ ] **T-313** 이력 페이지 구현 (/history) — 이전 질문/응답 목록
-- [ ] **T-314** 프로필/세그먼트 변경 페이지 (/settings)
+- [x] **T-313** FastAPI 프록시 API Route (`/api/insight`)
+  - watchlist 종목 ticker → ChromaDB `related_tickers` 필터
+  - Supabase 세그먼트 조회 → FastAPI POST
+- [x] **T-314** 종목 인사이트 페이지 구현 (/insight/[ticker])
+  - 종목 가격 카드 (전일 종가, 등락률)
+  - RAG 인사이트 스트리밍 출력
+  - 출처 뉴스 칩
+  - 추가 질문 입력창
+- [x] **T-315** 세그먼트별 UI 테마 분기 (A: 파랑, B: 빨강, C: 초록)
+- [x] **T-316** 인사이트 이력 저장 (insight_history 테이블)
 
-### Epic 3-5. 배포
+### Epic 3-5. 이력 및 설정 화면
 
-- [ ] **T-315** Vercel 배포 및 도메인 연결
-- [ ] **T-316** FastAPI EC2 CORS 설정 (Vercel 도메인 허용)
-- [ ] **T-317** E2E 배포 검증 (로그인 → 인사이트 생성 전체 플로우)
+- [x] **T-317** 이력 페이지 구현 (/history) — 날짜별 인사이트 목록
+- [x] **T-318** 설정 페이지 구현 (/settings) — 세그먼트 변경, 종목 관리, 로그아웃
+
+### Epic 3-6. 배포
+
+- [ ] **T-319** Vercel 배포 및 도메인 연결
+- [ ] **T-320** FastAPI EC2 CORS 설정 (Vercel 도메인 허용)
+- [ ] **T-321** E2E 배포 검증 (로그인 → 종목 등록 → 인사이트 생성 전체 플로우)
 
 ---
 

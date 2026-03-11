@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FinSight Agent — UI Mockup</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #0f0f0f;
+      color: #f1f1f1;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 24px 16px 48px;
+    }
+
+    /* ── Nav Tabs ── */
+    .nav-tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+    .nav-tabs button {
+      background: #1e1e1e;
+      border: 1px solid #333;
+      color: #aaa;
+      padding: 6px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.15s;
+    }
+    .nav-tabs button.active {
+      background: #fff;
+      color: #000;
+      border-color: #fff;
+      font-weight: 600;
+    }
+
+    /* ── Phone Shell ── */
+    .phone {
+      width: 375px;
+      min-height: 812px;
+      background: #141414;
+      border-radius: 44px;
+      border: 2px solid #2a2a2a;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 40px 80px rgba(0,0,0,0.6);
+    }
+
+    /* ── Screen ── */
+    .screen {
+      display: none;
+      flex-direction: column;
+      height: 812px;
+      overflow: hidden;
+    }
+    .screen.active { display: flex; }
+
+    /* ── Status Bar ── */
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 24px 6px;
+      font-size: 12px;
+      color: #888;
+      flex-shrink: 0;
+    }
+    .status-bar .time { font-weight: 600; color: #f1f1f1; font-size: 15px; }
+
+    /* ── Bottom Nav ── */
+    .bottom-nav {
+      display: flex;
+      justify-content: space-around;
+      padding: 10px 0 20px;
+      background: #1a1a1a;
+      border-top: 1px solid #252525;
+      flex-shrink: 0;
+    }
+    .bottom-nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      opacity: 0.45;
+      transition: opacity 0.15s;
+    }
+    .bottom-nav-item.active { opacity: 1; }
+    .bottom-nav-item svg { width: 22px; height: 22px; }
+    .bottom-nav-item span { font-size: 10px; color: #f1f1f1; }
+
+    /* ── Scroll Content ── */
+    .scroll-content {
+      flex: 1;
+      overflow-y: auto;
+      padding-bottom: 8px;
+    }
+    .scroll-content::-webkit-scrollbar { display: none; }
+
+    /* ── Common ── */
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .tag-A { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+    .tag-B { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+    .tag-C { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+    .up { color: #f87171; }
+    .down { color: #60a5fa; }
+
+    .btn-primary {
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      border: none;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-blue { background: #3b82f6; color: #fff; }
+
+    .divider { height: 1px; background: #222; margin: 0 20px; }
+
+    /* ─────────────────────────────────
+       SCREEN 1: LOGIN
+    ───────────────────────────────── */
+    .login-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 32px 28px;
+    }
+    .login-logo {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .login-logo .logo-icon {
+      width: 56px; height: 56px;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      border-radius: 16px;
+      margin: 0 auto 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+    }
+    .login-logo h1 { font-size: 24px; font-weight: 700; }
+    .login-logo p { font-size: 13px; color: #666; margin-top: 4px; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 12px; color: #888; margin-bottom: 6px; }
+    .form-input {
+      width: 100%;
+      padding: 13px 14px;
+      background: #1e1e1e;
+      border: 1px solid #2e2e2e;
+      border-radius: 10px;
+      color: #f1f1f1;
+      font-size: 14px;
+    }
+    .form-input::placeholder { color: #444; }
+    .login-footer {
+      text-align: center;
+      margin-top: 18px;
+      font-size: 13px;
+      color: #555;
+    }
+    .login-footer a { color: #3b82f6; text-decoration: none; }
+
+    /* ─────────────────────────────────
+       SCREEN 2: ONBOARDING
+    ───────────────────────────────── */
+    .ob-header {
+      padding: 20px 24px 10px;
+    }
+    .ob-step {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 20px;
+    }
+    .ob-step-dot {
+      height: 3px;
+      border-radius: 2px;
+      flex: 1;
+      background: #2a2a2a;
+    }
+    .ob-step-dot.done { background: #3b82f6; }
+    .ob-header h2 { font-size: 22px; font-weight: 700; line-height: 1.3; }
+    .ob-header p { font-size: 13px; color: #666; margin-top: 6px; }
+
+    .segment-cards { padding: 0 20px; display: flex; flex-direction: column; gap: 12px; }
+    .seg-card {
+      padding: 18px;
+      border-radius: 14px;
+      border: 2px solid transparent;
+      background: #1e1e1e;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .seg-card.selected-A { border-color: #3b82f6; background: rgba(59,130,246,0.08); }
+    .seg-card-top { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+    .seg-icon { font-size: 22px; }
+    .seg-card-top h3 { font-size: 15px; font-weight: 600; }
+    .seg-card p { font-size: 12px; color: #666; line-height: 1.5; }
+    .seg-keywords { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .seg-kw {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 8px;
+      background: #2a2a2a;
+      color: #888;
+    }
+
+    /* ─────────────────────────────────
+       SCREEN 3: HOME
+    ───────────────────────────────── */
+    .home-header {
+      padding: 16px 20px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .home-greeting { font-size: 18px; font-weight: 700; }
+    .home-greeting span { color: #888; font-size: 13px; font-weight: 400; display: block; margin-top: 2px; }
+    .market-banner {
+      margin: 0 20px 16px;
+      padding: 12px 14px;
+      background: #1e1e1e;
+      border-radius: 12px;
+      border-left: 3px solid #3b82f6;
+    }
+    .market-banner .label { font-size: 10px; color: #555; margin-bottom: 4px; letter-spacing: 0.5px; text-transform: uppercase; }
+    .market-banner .summary { font-size: 13px; color: #ccc; line-height: 1.5; }
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 20px 10px;
+    }
+    .section-header h3 { font-size: 15px; font-weight: 600; }
+    .section-header a { font-size: 12px; color: #3b82f6; text-decoration: none; cursor: pointer; }
+
+    .stock-card {
+      margin: 0 20px 10px;
+      padding: 16px;
+      background: #1e1e1e;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .stock-card:hover { background: #252525; }
+    .stock-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 10px;
+    }
+    .stock-card-name h4 { font-size: 15px; font-weight: 600; }
+    .stock-card-name .code { font-size: 11px; color: #555; margin-top: 2px; }
+    .stock-card-price { text-align: right; }
+    .stock-card-price .price { font-size: 16px; font-weight: 700; }
+    .stock-card-price .change { font-size: 12px; margin-top: 2px; }
+    .stock-card-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .insight-preview {
+      font-size: 12px;
+      color: #666;
+      flex: 1;
+      margin-right: 10px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .insight-btn {
+      flex-shrink: 0;
+      padding: 5px 12px;
+      border-radius: 8px;
+      background: rgba(59,130,246,0.12);
+      color: #60a5fa;
+      font-size: 11px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+    }
+    .add-stock-btn {
+      margin: 8px 20px 16px;
+      padding: 13px;
+      background: #1a1a1a;
+      border: 1px dashed #2e2e2e;
+      border-radius: 14px;
+      color: #555;
+      font-size: 13px;
+      text-align: center;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    /* ─────────────────────────────────
+       SCREEN 4: SEARCH
+    ───────────────────────────────── */
+    .search-header {
+      padding: 16px 20px 12px;
+    }
+    .search-header h2 { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
+    .search-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #1e1e1e;
+      border: 1px solid #2e2e2e;
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+    .search-input-wrap input {
+      flex: 1;
+      background: none;
+      border: none;
+      color: #f1f1f1;
+      font-size: 15px;
+      outline: none;
+    }
+    .search-input-wrap input::placeholder { color: #444; }
+    .search-results { padding: 8px 20px; }
+    .search-result-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 13px 0;
+    }
+    .result-left { display: flex; align-items: center; gap: 12px; }
+    .result-icon {
+      width: 36px; height: 36px;
+      background: #252525;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: #888;
+    }
+    .result-info .name { font-size: 14px; font-weight: 500; }
+    .result-info .meta { font-size: 11px; color: #555; margin-top: 2px; }
+    .result-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+    .result-right .price { font-size: 13px; font-weight: 600; }
+    .search-add-btn {
+      padding: 5px 12px;
+      border-radius: 8px;
+      border: 1px solid #3b82f6;
+      background: rgba(59,130,246,0.1);
+      color: #3b82f6;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .search-added-btn {
+      padding: 5px 12px;
+      border-radius: 8px;
+      border: 1px solid #2a2a2a;
+      background: #1e1e1e;
+      color: #444;
+      font-size: 12px;
+      cursor: default;
+      white-space: nowrap;
+    }
+    .search-section-label {
+      font-size: 11px;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    /* ─────────────────────────────────
+       SCREEN 5: INSIGHT
+    ───────────────────────────────── */
+    .insight-topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 20px 10px;
+    }
+    .back-btn {
+      width: 32px; height: 32px;
+      background: #1e1e1e;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    .insight-topbar h2 { font-size: 17px; font-weight: 700; flex: 1; }
+
+    .price-card {
+      margin: 0 20px 14px;
+      padding: 16px;
+      background: #1e1e1e;
+      border-radius: 14px;
+    }
+    .price-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .price-main { font-size: 28px; font-weight: 700; }
+    .price-change-badge {
+      padding: 5px 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .badge-up { background: rgba(248,113,113,0.15); color: #f87171; }
+    .badge-down { background: rgba(96,165,250,0.15); color: #60a5fa; }
+    .price-meta { display: flex; gap: 16px; }
+    .price-meta-item { font-size: 11px; color: #555; }
+    .price-meta-item span { color: #888; display: block; margin-top: 1px; }
+
+    .insight-section { padding: 0 20px 14px; }
+    .insight-section-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .insight-section-label h3 { font-size: 14px; font-weight: 600; }
+    .ai-badge {
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(139,92,246,0.15);
+      color: #a78bfa;
+      border: 1px solid rgba(139,92,246,0.2);
+      font-weight: 700;
+    }
+    .insight-box {
+      background: #1a1a1a;
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 13px;
+      line-height: 1.7;
+      color: #ccc;
+    }
+    .cursor {
+      display: inline-block;
+      width: 2px;
+      height: 14px;
+      background: #60a5fa;
+      margin-left: 2px;
+      vertical-align: middle;
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    .sources-wrap { margin-top: 10px; }
+    .sources-label { font-size: 11px; color: #555; margin-bottom: 6px; }
+    .sources-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .source-chip {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: #222;
+      border: 1px solid #2e2e2e;
+      color: #777;
+      cursor: pointer;
+    }
+
+    .question-bar {
+      padding: 10px 20px 0;
+      border-top: 1px solid #1e1e1e;
+    }
+    .question-bar p { font-size: 11px; color: #555; margin-bottom: 6px; }
+    .question-input-wrap { display: flex; gap: 8px; }
+    .question-input {
+      flex: 1;
+      background: #1e1e1e;
+      border: 1px solid #2e2e2e;
+      border-radius: 10px;
+      padding: 11px 14px;
+      color: #f1f1f1;
+      font-size: 13px;
+      outline: none;
+    }
+    .question-input::placeholder { color: #444; }
+    .send-btn {
+      width: 40px; height: 40px;
+      background: #3b82f6;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border: none;
+      flex-shrink: 0;
+    }
+
+    /* ─────────────────────────────────
+       SCREEN 6: HISTORY
+    ───────────────────────────────── */
+    .history-header { padding: 16px 20px 12px; }
+    .history-header h2 { font-size: 20px; font-weight: 700; }
+    .history-date-label {
+      padding: 8px 20px 6px;
+      font-size: 11px;
+      color: #555;
+      letter-spacing: 0.3px;
+    }
+    .history-item {
+      margin: 0 20px 10px;
+      padding: 14px;
+      background: #1e1e1e;
+      border-radius: 14px;
+      cursor: pointer;
+    }
+    .history-item-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .history-ticker {
+      font-size: 12px;
+      font-weight: 700;
+      color: #888;
+      background: #252525;
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+    .history-time { font-size: 11px; color: #444; margin-left: auto; }
+    .history-question { font-size: 13px; font-weight: 500; margin-bottom: 6px; }
+    .history-preview {
+      font-size: 12px;
+      color: #555;
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* ─────────────────────────────────
+       SCREEN 7: SETTINGS
+    ───────────────────────────────── */
+    .settings-header { padding: 16px 20px 12px; }
+    .settings-header h2 { font-size: 20px; font-weight: 700; }
+    .profile-card {
+      margin: 0 20px 20px;
+      padding: 18px;
+      background: #1e1e1e;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .avatar {
+      width: 48px; height: 48px;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .profile-info .name { font-size: 15px; font-weight: 600; }
+    .profile-info .email { font-size: 12px; color: #555; margin-top: 3px; }
+
+    .settings-section { margin-bottom: 6px; }
+    .settings-section-label {
+      padding: 0 20px 8px;
+      font-size: 11px;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .settings-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      background: #1e1e1e;
+      margin: 0 20px;
+      cursor: pointer;
+    }
+    .settings-row:first-of-type { border-radius: 12px 12px 0 0; }
+    .settings-row:last-of-type { border-radius: 0 0 12px 12px; margin-bottom: 4px; }
+    .settings-row:only-child { border-radius: 12px; }
+    .settings-row + .settings-row { border-top: 1px solid #252525; }
+    .settings-row .label { font-size: 14px; }
+    .settings-row .value { font-size: 13px; color: #555; display: flex; align-items: center; gap: 6px; }
+
+    .segment-change-card {
+      margin: 0 20px 16px;
+      padding: 16px;
+      background: #1e1e1e;
+      border-radius: 14px;
+    }
+    .segment-change-card .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .segment-change-card .top h3 { font-size: 14px; font-weight: 600; }
+    .segment-mini-btns { display: flex; gap: 8px; }
+    .seg-mini-btn {
+      flex: 1;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid #2a2a2a;
+      background: #1a1a1a;
+      text-align: center;
+      cursor: pointer;
+    }
+    .seg-mini-btn.active-A { border-color: #3b82f6; background: rgba(59,130,246,0.1); }
+    .seg-mini-btn .seg-name { font-size: 12px; font-weight: 600; }
+    .seg-mini-btn .seg-desc { font-size: 10px; color: #555; margin-top: 2px; }
+
+    .logout-btn {
+      margin: 16px 20px;
+      padding: 13px;
+      border-radius: 12px;
+      border: 1px solid #2a2a2a;
+      background: transparent;
+      color: #f87171;
+      font-size: 14px;
+      font-weight: 500;
+      width: calc(100% - 40px);
+      cursor: pointer;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="nav-tabs">
+    <button onclick="show('login')" class="active" id="tab-login">로그인</button>
+    <button onclick="show('onboarding')" id="tab-onboarding">온보딩</button>
+    <button onclick="show('home')" id="tab-home">홈</button>
+    <button onclick="show('search')" id="tab-search">검색</button>
+    <button onclick="show('insight')" id="tab-insight">인사이트</button>
+    <button onclick="show('history')" id="tab-history">이력</button>
+    <button onclick="show('settings')" id="tab-settings">설정</button>
+  </div>
+
+  <div class="phone">
+
+    <!-- ══════════════════════════════
+         SCREEN 1: LOGIN
+    ══════════════════════════════ -->
+    <div class="screen active" id="screen-login">
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <span>● ● ●</span>
+      </div>
+      <div class="login-wrap">
+        <div class="login-logo">
+          <div class="logo-icon">📈</div>
+          <h1>FinSight</h1>
+          <p>AI 기반 개인화 투자 인사이트</p>
+        </div>
+        <div class="form-group">
+          <label>이메일</label>
+          <input class="form-input" type="email" placeholder="you@example.com" />
+        </div>
+        <div class="form-group">
+          <label>비밀번호</label>
+          <input class="form-input" type="password" placeholder="••••••••" />
+        </div>
+        <button class="btn-primary btn-blue" style="margin-top:8px">로그인</button>
+        <div class="login-footer">
+          계정이 없으신가요? <a href="#">회원가입</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════
+         SCREEN 2: ONBOARDING
+    ══════════════════════════════ -->
+    <div class="screen" id="screen-onboarding">
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <span>● ● ●</span>
+      </div>
+      <div class="ob-header">
+        <div class="ob-step">
+          <div class="ob-step-dot done"></div>
+          <div class="ob-step-dot"></div>
+        </div>
+        <h2>투자 성향을<br/>선택해주세요</h2>
+        <p>선택한 성향에 맞는 관점으로 인사이트를 제공합니다</p>
+      </div>
+      <div class="scroll-content" style="padding-bottom:20px">
+        <div class="segment-cards">
+          <div class="seg-card selected-A">
+            <div class="seg-card-top">
+              <span class="seg-icon">🛡️</span>
+              <h3>안전추구형</h3>
+              <span class="tag tag-A" style="margin-left:auto">A형</span>
+            </div>
+            <p>리스크를 최소화하며 안정적인 수익을 추구합니다. 배당주, 국채 중심의 보수적 분석을 제공합니다.</p>
+            <div class="seg-keywords">
+              <span class="seg-kw">배당주</span>
+              <span class="seg-kw">국채</span>
+              <span class="seg-kw">리스크 관리</span>
+              <span class="seg-kw">분산투자</span>
+            </div>
+          </div>
+          <div class="seg-card">
+            <div class="seg-card-top">
+              <span class="seg-icon">🚀</span>
+              <h3>위험감수형</h3>
+              <span class="tag tag-B" style="margin-left:auto">B형</span>
+            </div>
+            <p>높은 수익을 위해 변동성을 감수합니다. 성장주, 모멘텀 중심의 공격적 분석을 제공합니다.</p>
+            <div class="seg-keywords">
+              <span class="seg-kw">성장주</span>
+              <span class="seg-kw">모멘텀</span>
+              <span class="seg-kw">해외주식</span>
+              <span class="seg-kw">테마투자</span>
+            </div>
+          </div>
+          <div class="seg-card">
+            <div class="seg-card-top">
+              <span class="seg-icon">🔍</span>
+              <h3>가치투자형</h3>
+              <span class="tag tag-C" style="margin-left:auto">C형</span>
+            </div>
+            <p>기업의 내재가치를 분석해 장기 투자합니다. PER, PBR 등 펀더멘털 중심의 분석을 제공합니다.</p>
+            <div class="seg-keywords">
+              <span class="seg-kw">PER/PBR</span>
+              <span class="seg-kw">실적</span>
+              <span class="seg-kw">장기투자</span>
+              <span class="seg-kw">내재가치</span>
+            </div>
+          </div>
+        </div>
+        <div style="padding:20px 20px 0">
+          <button class="btn-primary btn-blue" onclick="show('home')">다음 — 관심 종목 설정</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════
+         SCREEN 3: HOME
+    ══════════════════════════════ -->
+    <div class="screen" id="screen-home">
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <span>● ● ●</span>
+      </div>
+      <div class="scroll-content">
+        <div class="home-header">
+          <div>
+            <div class="home-greeting">안녕하세요, 김하나님 👋
+              <span>오늘의 관심 종목 인사이트</span>
+            </div>
+          </div>
+          <span class="tag tag-A">A형</span>
+        </div>
+
+        <div class="market-banner">
+          <div class="label">오늘의 시장 요약</div>
+          <div class="summary">KOSPI 2,587 <span class="down">▼ 0.8%</span> &nbsp;·&nbsp; NASDAQ 19,204 <span class="down">▼ 1.1%</span> &nbsp;·&nbsp; 원/달러 1,342원</div>
+        </div>
+
+        <div class="section-header">
+          <h3>관심 종목</h3>
+          <a onclick="show('search')">+ 추가</a>
+        </div>
+
+        <div class="stock-card" onclick="show('insight')">
+          <div class="stock-card-top">
+            <div class="stock-card-name">
+              <h4>삼성전자</h4>
+              <div class="code">005930 · KOSPI</div>
+            </div>
+            <div class="stock-card-price">
+              <div class="price">56,800원</div>
+              <div class="change down">▼ 1,200 (-2.07%)</div>
+            </div>
+          </div>
+          <div class="stock-card-bottom">
+            <div class="insight-preview">HBM 경쟁 심화로 단기 조정 압력...</div>
+            <button class="insight-btn">인사이트 →</button>
+          </div>
+        </div>
+
+        <div class="stock-card" onclick="show('insight')">
+          <div class="stock-card-top">
+            <div class="stock-card-name">
+              <h4>SK하이닉스</h4>
+              <div class="code">000660 · KOSPI</div>
+            </div>
+            <div class="stock-card-price">
+              <div class="price">182,500원</div>
+              <div class="change up">▲ 3,500 (+1.95%)</div>
+            </div>
+          </div>
+          <div class="stock-card-bottom">
+            <div class="insight-preview">엔비디아 HBM 공급 확대 기대감...</div>
+            <button class="insight-btn">인사이트 →</button>
+          </div>
+        </div>
+
+        <div class="stock-card" onclick="show('insight')">
+          <div class="stock-card-top">
+            <div class="stock-card-name">
+              <h4>NVIDIA</h4>
+              <div class="code">NVDA · NASDAQ</div>
+            </div>
+            <div class="stock-card-price">
+              <div class="price">$876.40</div>
+              <div class="change down">▼ $12.30 (-1.38%)</div>
+            </div>
+          </div>
+          <div class="stock-card-bottom">
+            <div class="insight-preview">Blackwell 출하 지연 우려, 단기 변동...</div>
+            <button class="insight-btn">인사이트 →</button>
+          </div>
+        </div>
+
+        <div class="add-stock-btn" onclick="show('search')">
+          <svg viewBox="0 0 20 20" fill="none" width="16" height="16"><path d="M10 4v12M4 10h12" stroke="#555" stroke-width="2" stroke-linecap="round"/></svg>
+          관심 종목 추가
+        </div>
+      </div>
+
+      <div class="bottom-nav">
+        <div class="bottom-nav-item active">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" stroke="#f1f1f1" stroke-width="1.8" stroke-linejoin="round"/></svg>
+          <span>홈</span>
+        </div>
+        <div class="bottom-nav-item" onclick="show('search')">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#f1f1f1" stroke-width="1.8"/><path d="M20 20l-3-3" stroke="#f1f1f1" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span>검색</span>
+        </div>
+        <div class="bottom-nav-item" onclick="show('history')">
+          <svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="2" stroke="#f1f1f1" stroke-width="1.8"/><path d="M8 9h8M8 13h5" stroke="#f1f1f1" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span>이력</span>
+        </div>
+        <div class="bottom-nav-item" onclick="show('settings')">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3" stroke="#f1f1f1" stroke-width="1.8"/><path d="M5 20c0-3.87 3.13-7 7-7s7 3.13 7 7" stroke="#f1f1f1" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span>설정</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════
+         SCREEN 4: SEARCH
+    ══════════════════════════════ -->
+    <div class="screen" id="screen-search">
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <span>● ● ●</span>
+      </div>
+      <div class="search-header">
+        <h2>종목 검색</h2>
+        <div class="search-input-wrap">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#555" stroke-width="2"/><path d="M20 20l-3-3" stroke="#555" stroke-width="2" stroke-linecap="round"/></svg>
+          <input placeholder="종목명 또는 코드 (예: 삼성, AAPL)" value="반도체" />
+        </div>
+      </div>
+
+      <div class="scroll-content">
+        <div class="search-results">
+          <div class="search-section-label">국내 · KRX</div>
+
+          <div class="search-result-item">
+            <div class="result-left">
+              <div class="result-icon">삼</div>
+              <div class="result-info">
+                <div class="name">삼성전자</div>
+                <div class="meta">005930 · KOSPI</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="result-right">
+                <div class="price down">56,800원</div>
+                <div style="font-size:11px;color:#888">▼ 2.07%</div>
+              </div>
+              <button class="search-added-btn">추가됨</button>
+            </div>
+          </div>
+          <div class="divider"></div>
+
+          <div class="search-result-item">
+            <div class="result-left">
+              <div class="result-icon">SK</div>
+              <div class="result-info">
+                <div class="name">SK하이닉스</div>
+                <div class="meta">000660 · KOSPI</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="result-right">
+                <div class="price up">182,500원</div>
+                <div style="font-size:11px;color:#888">▲ 1.95%</div>
+              </div>
+              <button class="search-added-btn">추가됨</button>
+            </div>
+          </div>
+          <div class="divider"></div>
+
+          <div class="search-result-item">
+            <div class="result-left">
+              <div class="result-icon">한</div>
+              <div class="result-info">
+                <div class="name">한미반도체</div>
+                <div class="meta">042700 · KOSDAQ</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="result-right">
+                <div class="price up">84,200원</div>
+                <div style="font-size:11px;color:#888">▲ 0.48%</div>
+              </div>
+              <button class="search-add-btn">+ 추가</button>
+            </div>
+          </div>
+          <div class="divider"></div>
+
+          <div class="search-result-item">
+            <div class="result-left">
+              <div class="result-icon">리</div>
+              <div class="result-info">
+                <div class="name">리노공업</div>
+                <div class="meta">058470 · KOSDAQ</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="result-right">
+                <div class="price up">165,000원</div>
+                <div style="font-size:11px;color:#888">▲ 1.23%</div>
+              </div>
+              <button class="search-add-btn">+ 추가</button>
+            </div>
+          </div>
+
+          <div class="search-section-label" style="margin-top:20px">해외 · NASDAQ/NYSE</div>
+
+          <div class="search-result-item">
+            <div class="result-left">
+              <div class="result-icon">N</div>
+              <div class="result-info">
+                <div class="name">NVIDIA</div>
+                <div class="meta">NVDA · NASDAQ</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="result-right">
+                <div class="price down">$876.40</div>
+                <div style="font-size:11px;color:#888">▼ 1.38%</div>
+              </div>
+              <button class="search-added-btn">추가됨</button>
+            </div>
+          </div>
+          <div class="divider"></div>
+
+          <div class="search-result-item">
+            <div class="result-left">
+              <div class="result-icon">A</div>
+              <div class="result-info">
+                <div class="name">Advanced Micro Devices</div>
+                <div class="meta">AMD · NASDAQ</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="result-right">
+                <div class="price up">$178.20</div>
+                <div style="font-size:11px;color:#888">▲ 2.14%</div>
+              </div>
+              <button class="search-add-btn">+ 추가</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bottom-nav">
+        <div class="bottom-nav-item" onclick="show('home')">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" stroke="#f1f1f1" stroke-width="1.8" stroke-linejoin="round"/></svg>
+          <span>홈</span>
+        </div>
+        <div class="bottom-nav-item active">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#f1f1f1" stroke-width="1.8"/><path d="M20 20l-3-3" stroke="#f1f1f1" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span>검색</span>
+        </div>
+        <div class="bottom-nav-item" onclick="show('history')">
+          <svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="2" stroke="#f1f1f1" stroke-width="1.8"/><path d="M8 9h8M8 13h5" stroke="#f1f1f1" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span>이력</span>
+        </div>
+        <div class="bottom-nav-item" onclick="show('settings')">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3" stroke="#f1f1f1" stroke-width="1.8"/><path d="M5 20c0-3.87 3.13-7 7-7s7 3.13 7 7" stroke="#f1f1f1" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span>설정</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════
+         SCREEN 5: INSIGHT
+    ══════════════════════════════ -->
+    <div class="screen" id="screen-insight">
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <span>● ● ●</span>
+      </div>
+
+      <div class="insight-topbar">
+        <div class="back-btn" onclick="show('home')">←</div>
+        <h2>삼성전자</h2>
+        <span class="tag tag-A">A형</span>
+      </div>
+
+      <div class="scroll-content">
+        <div class="price-card">
+          <div class="price-card-top">
+            <div>
+              <div style="font-size:11px;color:#555;margin-bottom:4px">005930 · KOSPI · 전일 종가</div>
+              <div class="price-main">56,800원</div>
+            </div>
+            <div class="price-change-badge badge-down">▼ 2.07%</div>
+          </div>
+          <div class="price-meta">
+            <div class="price-meta-item">전일 대비 <span class="down">-1,200원</span></div>
+            <div class="price-meta-item">52주 고 <span>87,800</span></div>
+            <div class="price-meta-item">52주 저 <span>53,000</span></div>
+          </div>
+        </div>
+
+        <div class="insight-section">
+          <div class="insight-section-label">
+            <h3>AI 인사이트</h3>
+            <span class="ai-badge">RAG</span>
+            <span style="font-size:11px;color:#555;margin-left:auto">방금 생성됨</span>
+          </div>
+          <div class="insight-box">
+            삼성전자는 최근 HBM(고대역폭 메모리) 시장에서 경쟁이 심화되며 단기 조정 압력을 받고 있습니다. SK하이닉스가 엔비디아 HBM3E 공급을 독점하는 상황에서, 삼성전자의 HBM 품질 인증 지연이 주가에 부정적 영향을 미치고 있습니다.<br/><br/>
+            <strong style="color:#f1f1f1">안전추구형 관점:</strong> 현재 주가는 52주 저점(53,000원) 대비 7% 수준으로 추가 하락 리스크가 제한적입니다. 반도체 업황 회복 전까지는 비중을 축소하고, 배당수익률(2.1%)을 고려한 장기 분할 매수 전략을 권고합니다.<span class="cursor"></span>
+          </div>
+          <div class="sources-wrap">
+            <div class="sources-label">근거 뉴스 출처</div>
+            <div class="sources-chips">
+              <span class="source-chip">한국경제 · HBM 경쟁</span>
+              <span class="source-chip">연합뉴스 · 삼성 실적</span>
+              <span class="source-chip">매일경제 · 반도체 업황</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="insight-section">
+          <div class="insight-section-label">
+            <h3>추가 질문 예시</h3>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="padding:10px 12px;background:#1a1a1a;border-radius:10px;font-size:12px;color:#777;cursor:pointer;border:1px solid #222">
+              지금 삼성전자 분할 매수 시작해도 될까요?
+            </div>
+            <div style="padding:10px 12px;background:#1a1a1a;border-radius:10px;font-size:12px;color:#777;cursor:pointer;border:1px solid #222">
+              HBM3E 인증 현황은 어떻게 되나요?
+            </div>
+            <div style="padding:10px 12px;background:#1a1a1a;border-radius:10px;font-size:12px;color:#777;cursor:pointer;border:1px solid #222">
+              SK하이닉스와 비교한 전망은?
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="question-bar">
+        <p>이 종목에 대해 더 물어보기</p>
+        <div class="question-input-wrap">
+          <input class="question-input" placeholder="예: 지금 사도 될까요?" />
+          <button class="send-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════
+         SCREEN 6: HISTORY
+    ══════════════════════════════ -->
+    <div class="screen" id="screen-history">
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <span>● ● ●</span>
+      </div>
+      <div class="history-header">
+        <h2>인사이트 이력</h2>
+      </div>
+      <div class="scroll-content">
+        <div class="history-date-label">오늘 · 2026년 3월 11일</div>
+
+        <div class="history-item">
+          <div class="history-item-top">
+            <div class="history-ticker">삼성전자</div>
+            <span class="tag tag-A">A형</span>
+            <span class="history-time">09:41</span>
+          </div>
+          <div class="history-question">지금 분할 매수 시작해도 될까요?</div>
+          <div class="history-preview">현재 주가는 52주 저점 대비 7% 수준으로 추가 하락 리스크가 제한적입니다. 배당수익률을 고려한 장기...</div>
+        </div>
+
+        <div class="history-item">
+          <div class="history-item-top">
+            <div class="history-ticker">NVIDIA</div>
+            <span class="tag tag-A">A형</span>
+            <span class="history-time">09:12</span>
+          </div>
+          <div class="history-question">Blackwell 출하 지연이 주가에 미치는 영향은?</div>
+          <div class="history-preview">Blackwell GPU 출하 지연 이슈가 단기적으로 주가에 부담을 주고 있으나, 데이터센터 수요의...</div>
+        </div>
+
+        <div class="history-date-label" style="margin-top:12px">어제 · 2026년 3월 10일</div>
+
+        <div class="history-item">
+          <div class="history-item-top">
+            <div class="history-ticker">SK하이닉스</div>
+            <span class="tag tag-A">A형</span>
+            <span class="history-time">16:35</span>
+          </div>
+          <div class="history-question">HBM 시장 전망이 어떻게 되나요?</div>
+          <div class="history-preview">HBM3E 시장에서 SK하이닉스의 독점 공급 지위가 유지되는 가운데, 2025년 하반기 추가 수주...</div>
+        </div>
+      </div>
+
+      <div class="bottom-nav">
+        <div class="bottom-nav-item" onclick="show('home')">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" stroke="#f1f1f1" stroke-width="1.8" stroke-linejoin="round"/></svg>
+          <span>홈</span>
+        </div>
+        <div class="bottom-nav-item" onclick="show('search')">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#f1f1f1" stroke-width="1.8"/><path d="M20 20l-3-3" stroke="#f1f1f1" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span>검색</span>
+        </div>
+        <div class="bottom-nav-item active">
+          <svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="2" stroke="#f1f1f1" stroke-width="1.8"/><path d="M8 9h8M8 13h5" stroke="#f1f1f1" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span>이력</span>
+        </div>
+        <div class="bottom-nav-item" onclick="show('settings')">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3" stroke="#f1f1f1" stroke-width="1.8"/><path d="M5 20c0-3.87 3.13-7 7-7s7 3.13 7 7" stroke="#f1f1f1" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span>설정</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════
+         SCREEN 7: SETTINGS
+    ══════════════════════════════ -->
+    <div class="screen" id="screen-settings">
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <span>● ● ●</span>
+      </div>
+      <div class="settings-header">
+        <h2>설정</h2>
+      </div>
+      <div class="scroll-content">
+        <div class="profile-card">
+          <div class="avatar">김</div>
+          <div class="profile-info">
+            <div class="name">김하나</div>
+            <div class="email">hana.kim@example.com</div>
+          </div>
+        </div>
+
+        <div class="segment-change-card">
+          <div class="top">
+            <h3>투자 성향</h3>
+            <div style="font-size:12px;color:#555">현재: <span class="tag tag-A">A형 안전추구</span></div>
+          </div>
+          <div class="segment-mini-btns">
+            <div class="seg-mini-btn active-A">
+              <div class="seg-name" style="color:#60a5fa">🛡️ A형</div>
+              <div class="seg-desc">안전추구형</div>
+            </div>
+            <div class="seg-mini-btn">
+              <div class="seg-name">🚀 B형</div>
+              <div class="seg-desc">위험감수형</div>
+            </div>
+            <div class="seg-mini-btn">
+              <div class="seg-name">🔍 C형</div>
+              <div class="seg-desc">가치투자형</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-section-label">관심 종목 관리</div>
+          <div class="settings-row" onclick="show('search')">
+            <span class="label">등록 종목</span>
+            <span class="value">3개 ›</span>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-section-label">알림</div>
+          <div class="settings-row">
+            <span class="label">인사이트 알림</span>
+            <span class="value" style="color:#4ade80">켜짐 ›</span>
+          </div>
+          <div class="settings-row">
+            <span class="label">알림 시간</span>
+            <span class="value">매일 오후 5시 ›</span>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-section-label">계정</div>
+          <div class="settings-row">
+            <span class="label">비밀번호 변경</span>
+            <span class="value">›</span>
+          </div>
+        </div>
+
+        <button class="logout-btn">로그아웃</button>
+        <div style="text-align:center;font-size:11px;color:#333;padding:8px 0 16px">FinSight Agent v0.1.0</div>
+      </div>
+
+      <div class="bottom-nav">
+        <div class="bottom-nav-item" onclick="show('home')">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" stroke="#f1f1f1" stroke-width="1.8" stroke-linejoin="round"/></svg>
+          <span>홈</span>
+        </div>
+        <div class="bottom-nav-item" onclick="show('search')">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#f1f1f1" stroke-width="1.8"/><path d="M20 20l-3-3" stroke="#f1f1f1" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span>검색</span>
+        </div>
+        <div class="bottom-nav-item" onclick="show('history')">
+          <svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="2" stroke="#f1f1f1" stroke-width="1.8"/><path d="M8 9h8M8 13h5" stroke="#f1f1f1" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span>이력</span>
+        </div>
+        <div class="bottom-nav-item active">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3" stroke="#f1f1f1" stroke-width="1.8"/><path d="M5 20c0-3.87 3.13-7 7-7s7 3.13 7 7" stroke="#f1f1f1" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span>설정</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /phone -->
+
+  <script>
+    function show(name) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.nav-tabs button').forEach(b => b.classList.remove('active'));
+      document.getElementById('screen-' + name).classList.add('active');
+      document.getElementById('tab-' + name).classList.add('active');
+    }
+  </script>
+</body>
+</html>
