@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 interface StockResult {
@@ -13,6 +14,7 @@ interface StockResult {
 
 export default function SearchPage() {
   const supabase = createClient()
+  const router = useRouter()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<StockResult[]>([])
   const [watchlist, setWatchlist] = useState<Set<string>>(new Set())
@@ -63,6 +65,7 @@ export default function SearchPage() {
       })
       setWatchlist(prev => { const s = new Set(Array.from(prev)); s.add(stock.ticker); return s })
     }
+    router.refresh()
   }
 
   const kor = results.filter(r => r.market === 'KOSPI' || r.market === 'KOSDAQ')
