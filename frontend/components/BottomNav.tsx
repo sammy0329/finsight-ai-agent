@@ -25,6 +25,18 @@ const navItems = [
     ),
   },
   {
+    href: '/reports',
+    label: '리포트',
+    icon: (active: boolean) => (
+      <svg viewBox="0 0 24 24" fill="none" width="22" height="22">
+        <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"
+          stroke={active ? '#f1f1f1' : '#555'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M13.73 21a2 2 0 01-3.46 0"
+          stroke={active ? '#f1f1f1' : '#555'} strokeWidth="1.8" strokeLinecap="round"/>
+      </svg>
+    ),
+  },
+  {
     href: '/history',
     label: '이력',
     icon: (active: boolean) => (
@@ -46,7 +58,11 @@ const navItems = [
   },
 ]
 
-export default function BottomNav() {
+interface BottomNavProps {
+  reportsUnread?: number
+}
+
+export default function BottomNav({ reportsUnread = 0 }: BottomNavProps) {
   const pathname = usePathname()
 
   return (
@@ -56,6 +72,7 @@ export default function BottomNav() {
     >
       {navItems.map(item => {
         const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
+        const isReports = item.href === '/reports'
         return (
           <Link
             key={item.href}
@@ -63,7 +80,23 @@ export default function BottomNav() {
             className="flex flex-col items-center gap-1"
             style={{ opacity: active ? 1 : 0.45 }}
           >
-            {item.icon(active)}
+            <span className="relative">
+              {item.icon(active)}
+              {isReports && reportsUnread > 0 && (
+                <span
+                  className="absolute -top-1 -right-1 flex items-center justify-center text-[9px] font-bold rounded-full"
+                  style={{
+                    background: '#ef4444',
+                    color: '#fff',
+                    minWidth: '14px',
+                    height: '14px',
+                    padding: '0 3px',
+                  }}
+                >
+                  {reportsUnread > 99 ? '99+' : reportsUnread}
+                </span>
+              )}
+            </span>
             <span className="text-[10px]" style={{ color: '#f1f1f1' }}>{item.label}</span>
           </Link>
         )
