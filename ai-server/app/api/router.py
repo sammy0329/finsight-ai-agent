@@ -6,6 +6,7 @@ from fastapi.responses import StreamingResponse
 from app.agent.chain import build_rag_chain, invoke_with_fallback
 from app.agent.executor import astream_agent, create_agent_executor
 from app.agent.retriever import get_retriever
+from app.agent.tools import detect_price_anomaly_json
 from app.api.schemas import InsightRequest, InsightResponse
 from app.core.config import settings
 from app.core.middleware import verify_internal_key
@@ -72,3 +73,19 @@ async def get_insight_stream(
             yield token
 
     return StreamingResponse(generate(), media_type="text/event-stream")
+
+
+@router.get("/anomaly/{ticker}")
+async def get_price_anomaly(
+    ticker: str,
+    _: str = Depends(verify_internal_key),
+) -> dict:
+    """가격 이상 감지 결과를 구조화된 JSON으로 반환한다.
+
+    Args:
+        ticker: 종목 티커 (예: 005930, AAPL).
+
+    Returns:
+        is_anomaly, zscore, direction, latest_return_pct, message 포함 dict.
+    """
+    return detect_price_anomaly_json(ticker)

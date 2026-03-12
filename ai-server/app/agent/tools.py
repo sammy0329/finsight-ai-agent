@@ -237,6 +237,87 @@ def detect_price_anomaly(ticker: str) -> str:
         )
 
 
+# ── T-226: 구조화된 이상 감지 결과 (API 응답용) ───────────────────────
+
+
+def detect_price_anomaly_json(ticker: str) -> dict:
+    """가격 이상 감지 결과를 구조화된 dict로 반환한다.
+
+    Args:
+        ticker: 종목 티커.
+
+    Returns:
+        is_anomaly, zscore, direction, latest_return_pct, message 포함 dict.
+    """
+    try:
+        end = datetime.now()
+        start = end - timedelta(days=40)
+        df = fdr.DataReader(ticker, start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d"))
+    except Exception:
+        return {
+            "ticker": ticker,
+            "is_anomaly": False,
+            "zscore": None,
+            "direction": None,
+            "latest_return_pct": None,
+            "message": "가격 데이터 조회 실패",
+        }
+
+    if df is None or df.empty or len(df) < 5:
+        return {
+            "ticker": ticker,
+            "is_anomaly": False,
+            "zscore": None,
+            "direction": None,
+            "latest_return_pct": None,
+            "message": "데이터 부족",
+        }
+
+    df = df.tail(20)
+    closes = df["Close"].tolist()
+    returns = [
+        (closes[i] - closes[i - 1]) / closes[i - 1]
+        for i in range(1, len(closes))
+        if closes[i - 1] != 0
+    ]
+
+    if len(returns) < 5:
+        return {
+            "ticker": ticker,
+            "is_anomaly": False,
+            "zscore": None,
+            "direction": None,
+            "latest_return_pct": None,
+            "message": "수익률 데이터 부족",
+        }
+
+    z = calculate_zscore(returns)
+    if z is None:
+        return {
+            "ticker": ticker,
+            "is_anomaly": False,
+            "zscore": None,
+            "direction": None,
+            "latest_return_pct": None,
+            "message": "표준편차 0 (변동 없음)",
+        }
+
+    latest_return_pct = returns[-1] * 100
+    is_anomaly = abs(z) > 2
+    direction = ("급등" if z > 0 else "급락") if is_anomaly else None
+
+    return {
+        "ticker": ticker,
+        "is_anomaly": is_anomaly,
+        "zscore": round(z, 2),
+        "direction": direction,
+        "latest_return_pct": round(latest_return_pct, 2),
+        "message": (
+            f"{direction} 감지 (Z-score: {z:.2f})" if is_anomaly else f"정상 (Z-score: {z:.2f})"
+        ),
+    }
+
+
 # ── LangChain Tool 래핑 ─────────────────────────────────────────────
 
 

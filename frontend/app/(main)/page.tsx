@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { SEGMENT_LABEL, SEGMENT_ICON, type Segment } from '@/types'
 import { fetchPrices, fetchMarketSummary, type PriceData } from '@/lib/yahoo'
+import AnomalyBadge from '@/components/AnomalyBadge'
 
 export default async function HomePage() {
   const supabase = await createClient()
@@ -95,8 +96,11 @@ export default async function HomePage() {
               >
                 <div className="flex justify-between items-start mb-2.5">
                   <div>
-                    <h3 className="font-semibold text-sm">{stock.name}</h3>
-                    <p className="text-xs mt-0.5" style={{ color: '#555' }}>{stock.ticker} · {stock.market}</p>
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <h3 className="font-semibold text-sm">{stock.name}</h3>
+                      <AnomalyBadge ticker={stock.ticker} />
+                    </div>
+                    <p className="text-xs" style={{ color: '#555' }}>{stock.ticker} · {stock.market}</p>
                   </div>
                   {price ? (
                     <div className="text-right">

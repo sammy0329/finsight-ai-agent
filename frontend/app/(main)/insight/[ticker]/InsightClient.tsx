@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { type Segment, SEGMENT_LABEL, SEGMENT_ICON } from '@/types'
@@ -52,6 +52,20 @@ export default function InsightClient({
   const [loading, setLoading] = useState(false)
   const [query, setQuery] = useState('')
   const [inWatchlist, setInWatchlist] = useState(initialInWatchlist)
+  const [anomaly, setAnomaly] = useState<{
+    is_anomaly: boolean
+    zscore: number | null
+    direction: '급등' | '급락' | null
+    latest_return_pct: number | null
+    message: string
+  } | null>(null)
+
+  useEffect(() => {
+    fetch(`/api/stocks/anomaly/${ticker}`)
+      .then(r => r.json())
+      .then(setAnomaly)
+      .catch(() => null)
+  }, [ticker])
 
   async function fetchInsight(q: string) {
     if (!q.trim()) return
@@ -173,6 +187,44 @@ export default function InsightClient({
             {priceDate && <span>기준일 {priceDate}</span>}
           </div>
         </div>
+
+        {/* 이상 감지 카드 */}
+        {anomaly?.is_anomaly && (
+          <div
+            className="mb-3.5 p-3.5 rounded-xl flex items-start gap-3"
+            style={{
+              background: anomaly.direction === '급등'
+                ? 'rgba(248,113,113,0.08)'
+                : 'rgba(96,165,250,0.08)',
+              border: `1px solid ${anomaly.direction === '급등' ? '#f8717130' : '#60a5fa30'}`,
+            }}
+          >
+            <span className="text-lg leading-none">⚡</span>
+            <div className="flex-1">
+              <p className="text-xs font-bold mb-0.5"
+                style={{ color: anomaly.direction === '급등' ? '#f87171' : '#60a5fa' }}>
+                오늘 {anomaly.direction} 감지
+              </p>
+              <p className="text-[11px]" style={{ color: '#999' }}>
+                오늘 수익률 {anomaly.latest_return_pct != null
+                  ? `${anomaly.latest_return_pct > 0 ? '+' : ''}${anomaly.latest_return_pct.toFixed(2)}%`
+                  : '—'
+                }로 통계적 이상 변동입니다 (Z-score: {anomaly.zscore?.toFixed(2)})
+              </p>
+              <button
+                className="mt-2 text-[11px] font-semibold underline"
+                style={{ color: anomaly.direction === '급등' ? '#f87171' : '#60a5fa' }}
+                onClick={() => {
+                  const q = `오늘 ${stockName} ${anomaly.direction}에 영향을 준 뉴스나 이슈가 있나요?`
+                  setQuery(q)
+                  fetchInsight(q)
+                }}
+              >
+                원인 분석하기 →
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* AI 인사이트 */}
         {insight ? (
