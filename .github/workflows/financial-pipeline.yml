@@ -1,0 +1,80 @@
+name: Financial Data Pipeline
+
+on:
+  # T-506: 분기별 자동 실행 (1월, 4월, 7월, 10월 첫째 월요일 09:00 KST = UTC 00:00)
+  schedule:
+    - cron: "0 0 1-7 1,4,7,10 1"
+
+  # 수동 실행
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: "3.11"
+  WORKING_DIR: ai-server
+
+jobs:
+  run-financial-pipeline:
+    name: Collect Financial Metrics & Profiles
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install dependencies
+        working-directory: ${{ env.WORKING_DIR }}
+        run: poetry install --only main --no-interaction
+
+      - name: Run financial pipeline
+        working-directory: ${{ env.WORKING_DIR }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: poetry run python -m app.pipeline.run_financial_pipeline
+
+      - name: Notify Slack on success
+        if: success()
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          payload: |
+            {
+              "text": "Financial pipeline completed successfully",
+              "attachments": [{
+                "color": "good",
+                "fields": [
+                  {"title": "Workflow", "value": "Financial Data Pipeline", "short": true},
+                  {"title": "Trigger", "value": "${{ github.event_name }}", "short": true},
+                  {"title": "Run", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}", "short": false}
+                ]
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+      - name: Notify Slack on failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          payload: |
+            {
+              "text": "Financial pipeline FAILED",
+              "attachments": [{
+                "color": "danger",
+                "fields": [
+                  {"title": "Workflow", "value": "Financial Data Pipeline", "short": true},
+                  {"title": "Run", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}", "short": false}
+                ]
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

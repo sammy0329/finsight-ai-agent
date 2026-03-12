@@ -203,12 +203,12 @@
 
 ### Epic 5-1. 재무 데이터 파이프라인
 
-- [ ] **T-501** Supabase `financial_metrics` 테이블 스키마 생성 (ticker, period, PER, PBR, ROE, 매출, 영업이익)
-- [ ] **T-502** Supabase `company_profiles` 테이블 스키마 생성 (ticker, 업종, 설립일, 사업내용)
-- [ ] **T-503** DART `fnlttSinglAcnt` API 연동 — 분기별 재무제표 수집 모듈
-- [ ] **T-504** DART `company.json` API 연동 — 기업 개황 수집 모듈
-- [ ] **T-505** Supabase upsert 모듈 (ticker+period 기준 멱등성 보장)
-- [ ] **T-506** GitHub Actions 분기 실행 트리거 추가 (`workflow_dispatch` + 분기 cron)
+- [x] **T-501** Supabase `financial_metrics` 테이블 스키마 생성 (ticker, period, PER, PBR, ROE, 매출, 영업이익)
+- [x] **T-502** Supabase `company_profiles` 테이블 스키마 생성 (ticker, 업종, 설립일, 사업내용)
+- [x] **T-503** yfinance 기반 분기별 재무지표 수집 모듈 (`financial_collector.py`)
+- [x] **T-504** yfinance 기반 기업 개황 수집 모듈 (`financial_collector.py`)
+- [x] **T-505** Supabase upsert 모듈 (ticker+period 기준 멱등성 보장, `supabase_store.py`)
+- [x] **T-506** GitHub Actions 분기 실행 트리거 추가 (`workflow_dispatch` + 분기 cron)
 
 ### Epic 5-2. get_financials_tool 구현
 

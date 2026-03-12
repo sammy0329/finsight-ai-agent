@@ -21,6 +21,7 @@ finance-datareader = "^0.9"
 pandas = "^2.0"
 requests = "^2.31"
 supabase = "^2.28.0"
+yfinance = "^1.2.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0"
