@@ -70,7 +70,10 @@ async def get_insight_stream(
 
     async def generate():
         async for token in astream_agent(executor, req.query):
-            yield token
+            # 개행 포함 토큰은 <br> 치환 후 SSE 포맷으로 전송
+            safe = token.replace("\n", "<br>")
+            yield f"data: {safe}\n\n"
+        yield "data: [DONE]\n\n"
 
     return StreamingResponse(generate(), media_type="text/event-stream")
 

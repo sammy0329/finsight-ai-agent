@@ -93,12 +93,13 @@ export default function InsightClient({
         // SSE 파싱
         chunk.split('\n').forEach(line => {
           if (line.startsWith('data: ')) {
-            const data = line.slice(6)
+            const data = line.slice(6).trimEnd()
             if (data === '[DONE]') return
             if (data.startsWith('[SOURCES]')) {
-              setSources(JSON.parse(data.slice(9)))
+              try { setSources(JSON.parse(data.slice(9))) } catch { /* noop */ }
             } else {
-              fullText += data
+              // <br> → 실제 개행으로 복원
+              fullText += data.replace(/<br>/g, '\n')
               setInsight(fullText)
             }
           }
@@ -237,7 +238,7 @@ export default function InsightClient({
               </span>
               <span className="text-[11px] ml-auto" style={{ color: '#555' }}>{SEGMENT_ICON[segment]} {SEGMENT_LABEL[segment]} 관점</span>
             </div>
-            <div className="p-3.5 rounded-xl text-sm leading-relaxed" style={{ background: '#1a1a1a', color: '#ccc' }}>
+            <div className="p-3.5 rounded-xl text-sm leading-relaxed whitespace-pre-wrap" style={{ background: '#1a1a1a', color: '#ccc' }}>
               {insight}
               {loading && <span className="cursor-blink" />}
             </div>
