@@ -212,44 +212,60 @@
 
 ### Epic 5-2. get_financials_tool 구현
 
-- [ ] **T-507** `get_financials_tool` LangChain 도구 구현
+- [x] **T-507** `get_financials_tool` LangChain 도구 구현
   - Supabase에서 최신 분기 지표 조회 → 포맷팅된 문자열 반환
   - 입력: ticker / 출력: PER, PBR, ROE, 매출, 영업이익, 기준 분기
-- [ ] **T-508** Agent 프롬프트에 `get_financials_tool` 사용 시점 안내 추가
+- [x] **T-508** Agent 프롬프트에 `get_financials_tool` 사용 시점 안내 추가
   - C형 세그먼트: "PER/PBR 관련 질문 시 우선 사용" 명시
-- [ ] **T-509** ChromaDB 재무 요약 청크화 파이프라인 추가 (RAG 이중 활용)
-- [ ] **T-510** get_financials_tool 단위 테스트 (Mock Supabase)
+- [x] **T-509** ChromaDB 재무 요약 청크화 파이프라인 추가 (RAG 이중 활용)
+- [x] **T-510** get_financials_tool 단위 테스트 (Mock Supabase)
 
 ---
 
-## Phase 6. 모닝 브리프
+## Phase 6. 리포트 시스템 (4종)
 
-> **목표:** 매일 08:00 KST 관심종목에 대한 AI 인사이트를 자동 생성하여 인앱 알림으로 저장하고, Web Push로 발송한다.
+> **목표:** 한국/미국 장전·장마감 4종 리포트를 자동 생성하여 인앱 알림으로 전달한다. 이를 위해 데이터 파이프라인 갭을 먼저 해소하고, Supabase 리포트 스키마, 리포트 생성 파이프라인, 프론트엔드 리포트 탭을 구현한다.
+>
+> **4종 리포트:**
+> 1. 한국 장 전 브리프 (08:00 KST) — KOSPI/KOSDAQ 전일 종가 + KOR watchlist + 국내 뉴스
+> 2. 한국 장 마감 리포트 (16:30 KST) — KOSPI/KOSDAQ 당일 종가 + KOR watchlist 섹터별 + 국내 뉴스
+> 3. 미국 장 전 브리프 (22:30 KST) — 유럽 마감 + 미국 선물 + US watchlist
+> 4. 미국 장 마감 리포트 (07:00 KST) — S&P500/NASDAQ/DOW + US watchlist + 미국 뉴스
 
-### Epic 6-1. AWS Lambda + EventBridge 설정
+### Epic 6-0. 데이터 파이프라인 보완 (파이프라인 갭 해결)
 
-- [ ] **T-601** Supabase `notifications` 테이블 스키마 생성 (user_id, ticker, content, is_read, created_at)
-- [ ] **T-602** Lambda 함수 구현 (Python)
-  - Supabase watchlist 조회 → 유저별 관심종목 그룹핑
-  - FastAPI `/api/ai/insight` 호출 (세그먼트별)
-  - Supabase notifications 저장
-  - 최대 5개 병렬 처리, 개별 실패 무시
-- [ ] **T-603** Lambda 환경변수 설정 (FASTAPI_URL, INTERNAL_API_KEY, SUPABASE_URL, SERVICE_ROLE_KEY)
-- [ ] **T-604** EventBridge Rule 설정 (cron: `0 23 ? * MON-FRI *` — UTC 23:00 = KST 08:00)
-- [ ] **T-605** Lambda 테스트 실행 및 CloudWatch 로그 확인
+- [ ] **T-601** US 파이프라인 cron 분리 (07:00 KST — `0 22 * * 1-5`)
+- [ ] **T-602** daily_prices Supabase 적재 활성화 (run_pipeline.py에서 stock_collector 호출)
+- [ ] **T-603** KOSPI/KOSDAQ 지수 수집 추가 (`fdr.DataReader("KS11")`, `fdr.DataReader("KQ11")` → market_indices 테이블)
+- [ ] **T-604** USD/KRW 환율 수집 추가 (`fdr.DataReader("USD/KRW")` → fx_rates 테이블)
+- [ ] **T-605** Supabase market_indices, fx_rates 테이블 스키마 생성
 
-### Epic 6-2. 인앱 알림 UI
+### Epic 6-1. Supabase 리포트 스키마
 
-- [ ] **T-606** 홈 화면 알림 배지 (읽지 않은 모닝 브리프 수 표시)
-- [ ] **T-607** 모닝 브리프 목록 페이지 (/notifications) — 날짜별, 종목별 정렬
-- [ ] **T-608** 알림 읽음 처리 (is_read 업데이트)
+- [ ] **T-606** notifications 테이블 생성 + RLS 정책
+- [ ] **T-607** market_snapshots 테이블 생성
+- [ ] **T-608** `/api/notifications` Next.js API 라우트 (목록 조회, 읽음 처리)
 
-### Epic 6-3. Web Push (선택)
+### Epic 6-2. 리포트 생성 파이프라인 (AI 서버)
 
-- [ ] **T-609** VAPID 키 생성 및 환경변수 등록
-- [ ] **T-610** PWA Service Worker 설정 (`public/sw.js`)
-- [ ] **T-611** 푸시 구독 UI (알림 허용 요청 + 구독 정보 Supabase 저장)
-- [ ] **T-612** Lambda에서 Web Push API 호출 통합
+- [ ] **T-609** `report_generator.py` 구현 — 4종 리포트 생성 로직
+  - 시장 스냅샷 수집 (지수/환율/종목 종가)
+  - watchlist 기반 관심종목 필터링 (시장별 분기)
+  - Agent 기반 뉴스 요약 + 섹터별 종목 인사이트
+  - Supabase notifications upsert
+- [ ] **T-610** KOR 장 마감 리포트 생성 (16:30 KST 트리거)
+- [ ] **T-611** 미국 장 마감 리포트 생성 (07:00 KST 트리거)
+- [ ] **T-612** KOR 장 전 브리프 생성 (08:00 KST 트리거)
+- [ ] **T-613** 미국 장 전 브리프 생성 (22:30 KST 트리거)
+- [ ] **T-614** GitHub Actions 리포트 스케줄 (4개 cron) 또는 Lambda + EventBridge
+
+### Epic 6-3. 프론트엔드 리포트 탭
+
+- [ ] **T-615** BottomNav에 리포트 탭 추가 (벨 아이콘) + 미읽음 배지
+- [ ] **T-616** `/reports` 리포트 목록 페이지 (날짜별, 4종 아이콘 구분)
+- [ ] **T-617** `/reports/[id]` 리포트 상세 페이지 (무드 헤더, 지수, 섹터별 종목, 뉴스)
+- [ ] **T-618** 읽음 처리 (`is_read` 업데이트 on 상세 진입)
+- [ ] **T-619** 리포트 없는 경우 빈 상태 UI
 
 ---
 
@@ -301,7 +317,7 @@ flowchart TD
     P3["Phase 3\n프론트엔드"]
     P4["Phase 4\nEC2 + Vercel 배포"]
     P5["Phase 5\n재무 데이터"]
-    P6["Phase 6\n모닝 브리프"]
+    P6["Phase 6\n리포트 시스템 (4종)"]
     P7["Phase 7\n품질 평가"]
 
     P0 --> P1 & P3
@@ -314,4 +330,4 @@ flowchart TD
 ```
 
 > Phase 4(배포)가 완료되어야 Phase 5·6 실서버 환경에서 검증 가능.
-> Phase 5(재무 데이터)와 Phase 6(모닝 브리프)은 병렬 진행 가능.
+> Phase 5(재무 데이터)와 Phase 6(리포트 시스템)은 병렬 진행 가능.

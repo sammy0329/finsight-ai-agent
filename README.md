@@ -48,9 +48,16 @@ Agent 판단:
 
 최근 20일 표준편차 기반 Z-score를 산출하여 **통계적으로 비정상적인 가격 변동을 자동 감지**하고, 그 원인을 뉴스·공시 데이터로 설명합니다.
 
-### 4. 모닝 브리프 — 장 시작 전 자동 인사이트 발송
+### 4. 4종 리포트 시스템 — 한국/미국 장전·장마감 자동 인사이트
 
-매일 08:00 KST, AWS Lambda가 관심종목에 대한 인사이트를 자동 생성하여 인앱 알림으로 전달합니다. 사용자가 앱을 열기 전에 오늘의 투자 정보가 준비되어 있습니다.
+한국/미국 장전·장마감 4종 리포트를 자동 생성하여 인앱 알림으로 전달합니다. 사용자가 앱을 열기 전에 오늘의 투자 정보가 준비되어 있습니다.
+
+| 리포트 | 시각 (KST) | 주요 콘텐츠 |
+|---|---|---|
+| 한국 장 전 브리프 | 08:00 | KOSPI/KOSDAQ 전일 종가, KOR watchlist, 국내 뉴스 |
+| 한국 장 마감 리포트 | 16:30 | KOSPI/KOSDAQ 당일, KOR watchlist 섹터별, 국내 뉴스 |
+| 미국 장 전 브리프 | 22:30 | 유럽 마감, 미국 선물, US watchlist |
+| 미국 장 마감 리포트 | 07:00 | S&P500/NASDAQ/DOW, US watchlist, 미국 뉴스 |
 
 ---
 
@@ -67,7 +74,7 @@ flowchart TD
 
     subgraph Supabase["Supabase Cloud"]
         SA["Auth"]
-        SDB["PostgreSQL\nprofiles · watchlist · insight_history\nfinancial_metrics · notifications"]
+        SDB["PostgreSQL\nprofiles · watchlist · insight_history\nfinancial_metrics · notifications\nmarket_snapshots"]
     end
 
     subgraph EC2["AWS EC2 t3.micro — Docker Compose"]
@@ -82,10 +89,11 @@ flowchart TD
         Chroma["ChromaDB :8001"]
     end
 
-    subgraph Lambda["AWS Lambda + EventBridge"]
-        EB["EventBridge\n08:00 KST 평일"]
-        LF["Lambda\n모닝 브리프 배치"]
-        EB --> LF
+    subgraph ReportPipeline["Report Pipeline — GitHub Actions"]
+        R1["KOR 장전 브리프\n08:00 KST"]
+        R2["KOR 장마감 리포트\n16:30 KST"]
+        R3["US 장전 브리프\n22:30 KST"]
+        R4["US 장마감 리포트\n07:00 KST"]
     end
 
     subgraph Pipeline["GitHub Actions"]
@@ -99,7 +107,7 @@ flowchart TD
     FA --> T1 & T2 & T3 & T4 & T5
     T1 --> Chroma
     T5 --> SDB
-    LF --> SDB & FA
+    R1 & R2 & R3 & R4 --> SDB & FA
     P1 --> Chroma
     P2 --> SDB
 ```
@@ -117,7 +125,7 @@ flowchart TD
 | 실시간 가격 | Yahoo Finance API |
 | Pipeline (뉴스) | GitHub Actions · Naver Search API · NewsAPI · OpenDart API |
 | Pipeline (재무) | GitHub Actions · DART 재무제표 API · Supabase |
-| 모닝 브리프 | AWS Lambda · EventBridge |
+| 리포트 시스템 (4종) | GitHub Actions cron · report_generator.py |
 | Infra | AWS EC2 t3.micro · Docker Compose |
 
 ---
@@ -141,8 +149,7 @@ finsight-ai-agent/
 │       ├── agent/          # LangChain AgentExecutor + 5개 Tools
 │       ├── pipeline/       # 데이터 수집·정제·벡터화
 │       └── core/           # 설정·공통 유틸
-├── lambda/                 # 모닝 브리프 Lambda 함수
-│   └── morning_brief/
+├── ai-server/app/pipeline/ # 리포트 생성 파이프라인 (report_generator.py)
 ├── docker/                 # Dockerfile 모음
 ├── docs/                   # PRD · TECH_STACK · TASK · DEPLOYMENT
 └── docker-compose.yml
@@ -225,8 +232,8 @@ CHROMA_HOST=localhost CHROMA_PORT=8001 \
 | Phase 2 | Multi-tool AI 에이전트 (AgentExecutor + 4개 도구) | ✅ 완료 |
 | Phase 3 | Next.js + Supabase 프론트엔드 | ✅ 완료 |
 | Phase 4 | EC2 + Vercel 배포 | 🔲 진행 예정 |
-| Phase 5 | 재무 데이터 통합 (DART PER/PBR/ROE + get_financials_tool) | 🔲 진행 예정 |
-| Phase 6 | 모닝 브리프 (Lambda + EventBridge + Web Push) | 🔲 진행 예정 |
+| Phase 5 | 재무 데이터 통합 (DART PER/PBR/ROE + get_financials_tool) | ✅ 완료 |
+| Phase 6 | 4종 리포트 시스템 (한국/미국 장전·장마감 리포트 + notifications UI) | 🔲 진행 예정 |
 | Phase 7 | 품질 평가 및 포트폴리오 문서화 | 🔲 진행 예정 |
 
 ---

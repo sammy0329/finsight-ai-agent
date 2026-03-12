@@ -13,7 +13,7 @@ flowchart TD
 
     subgraph Vercel["Frontend & BFF — Next.js (Vercel)"]
         direction LR
-        Pages["UI 페이지\n/ · /search · /insight/[ticker]\n/history · /settings · /notifications"]
+        Pages["UI 페이지\n/ · /search · /insight/[ticker]\n/history · /settings · /reports"]
         APIRoute["/api/insight\nFastAPI 프록시 (SSE)"]
         SupabaseSDK["Supabase SDK\n인증 + DB 조회"]
         YahooLib["lib/yahoo.ts\n실시간 가격·시장 요약"]
@@ -41,13 +41,11 @@ flowchart TD
         T5 --> SupabaseDB
     end
 
-    subgraph Lambda["AWS Lambda + EventBridge"]
-        EB["EventBridge\ncron: 매일 08:00 KST"]
-        LF["Lambda (Python)\n모닝 브리프 배치"]
-        EB --> LF
-        LF -->|"watchlist 조회"| SupabaseDB
-        LF -->|"인사이트 생성"| FA
-        LF -->|"알림 저장"| SupabaseDB
+    subgraph ReportPipeline["Report Pipeline — GitHub Actions (4개 cron)"]
+        RG["report_generator.py\n4종 리포트 생성"]
+        RG -->|"watchlist 조회"| SupabaseDB
+        RG -->|"인사이트 생성"| FA
+        RG -->|"리포트 저장"| SupabaseDB
     end
 
     subgraph ExternalAPIs["External APIs"]
@@ -124,26 +122,48 @@ sequenceDiagram
 
 ---
 
-## 모닝 브리프 시퀀스
+## 리포트 시스템 시퀀스 (4종)
+
+**4종 리포트 타입:**
+
+| 리포트 | report_type | 발행 (KST) | cron (UTC) | 주요 콘텐츠 |
+|---|---|---|---|---|
+| 한국 장 전 브리프 | `KOR_PREMARKET` | 08:00 | `0 23 * * 1-5` | KOSPI/KOSDAQ 전일 종가, KOR watchlist, 국내 뉴스 |
+| 한국 장 마감 리포트 | `KOR_CLOSE` | 16:30 | `30 7 * * 1-5` | KOSPI/KOSDAQ 당일, KOR watchlist 섹터별, 국내 뉴스 |
+| 미국 장 전 브리프 | `US_PREMARKET` | 22:30 | `30 13 * * 1-5` | 유럽 마감, 미국 선물, US watchlist |
+| 미국 장 마감 리포트 | `US_CLOSE` | 07:00 | `0 22 * * 1-5` | S&P500/NASDAQ/DOW, US watchlist, 미국 뉴스 |
+
+**데이터 플로우:**
+```
+GitHub Actions cron → report_generator.py
+  → 시장 스냅샷 수집 (지수/환율/종목 종가)
+  → watchlist 기반 관심종목 필터링 (시장별 분기)
+  → Agent 기반 뉴스 요약 + 섹터별 종목 인사이트
+  → Supabase market_snapshots upsert (공유 스냅샷)
+  → Supabase notifications upsert (유저별 리포트)
+  → Next.js /api/notifications → 클라이언트 폴링
+```
 
 ```mermaid
 sequenceDiagram
-    participant EB as EventBridge\n(08:00 KST)
-    participant LF as Lambda (Python)
+    participant GHA as GitHub Actions\n(4개 cron)
+    participant RG as report_generator.py
+    participant FDR as FinanceDataReader
     participant SB as Supabase DB
     participant FA as FastAPI (EC2)
 
-    EB->>LF: trigger (cron)
-    LF->>SB: SELECT watchlist GROUP BY user_id
-    SB-->>LF: [{user_id, segment, tickers:[...]}]
+    GHA->>RG: trigger (report_type)
+    RG->>FDR: 지수/환율/종목 종가 수집
+    FDR-->>RG: 시장 스냅샷 데이터
+    RG->>SB: UPSERT market_snapshots
+    RG->>SB: SELECT watchlist WHERE market = report_market
+    SB-->>RG: [{user_id, segment, tickers:[...]}]
 
-    loop 유저별 관심종목 (최대 5개 병렬)
-        LF->>FA: POST /api/ai/insight {ticker, segment, query:"오늘 모닝 브리프"}
-        FA-->>LF: 인사이트 텍스트
-        LF->>SB: INSERT notifications {user_id, ticker, content}
+    loop 유저별 리포트 생성
+        RG->>FA: POST /api/ai/insight {tickers, segment, report_type}
+        FA-->>RG: 뉴스 요약 + 섹터별 인사이트
+        RG->>SB: INSERT notifications {user_id, report_type, payload}
     end
-
-    Note over LF: Web Push (옵션)\nVAPID 키로 브라우저 알림 발송
 ```
 
 ---
@@ -212,7 +232,7 @@ def get_financials_tool(ticker: str) -> str:
 |---|---|---|
 | 뉴스 파이프라인 스케줄러 | GitHub Actions (cron) | 별도 서버 불필요, CI/CD 통합 |
 | 재무 파이프라인 스케줄러 | GitHub Actions (workflow_dispatch + 분기 cron) | 뉴스 파이프라인과 독립 관리 |
-| 모닝 브리프 스케줄러 | **AWS Lambda + EventBridge** | 일 1회 배치, 상시 구동 불필요, 사실상 무료 |
+| 리포트 생성 스케줄러 | **GitHub Actions** (4개 cron) | 뉴스 파이프라인과 동일 인프라, 별도 Lambda 불필요 |
 | 국내 공시 | 금융감독원 OpenDart API | 공시 목록, 재무제표 API |
 | 국내 뉴스 | Naver Search API | 카테고리별 멀티쿼리(8개) |
 | 미국 뉴스 | NewsAPI | 카테고리별 멀티쿼리(6개) |
@@ -233,7 +253,10 @@ def get_financials_tool(ticker: str) -> str:
 | `insight_history` | user_id, ticker, query, answer, sources[] | 인사이트 이력 |
 | `financial_metrics` | ticker, period, per, pbr, roe, revenue, op_income | 분기 재무지표 |
 | `company_profiles` | ticker, name, sector, industry, description | 기업 개요 |
-| `notifications` | user_id, ticker, content, is_read | 모닝 브리프 알림 |
+| `notifications` | user_id, report_type, is_read, payload(jsonb) | 4종 리포트 알림 |
+| `market_snapshots` | report_type, snapshot_date, payload(jsonb) | 시장 스냅샷 (공유 데이터) |
+| `market_indices` | index_code, date, close, change | KOSPI/KOSDAQ 등 지수 |
+| `fx_rates` | pair, date, rate | USD/KRW 등 환율 |
 
 ### ChromaDB — Vector DB
 
@@ -263,7 +286,7 @@ def get_financials_tool(ticker: str) -> str:
 | Next.js | Vercel | 자동 CI/CD, 글로벌 CDN |
 | Supabase | Supabase Cloud | 관리형 PostgreSQL + Auth |
 | FastAPI + ChromaDB | AWS EC2 t3.micro (Docker Compose) | 상시 구동, EBS 영속 볼륨 |
-| 모닝 브리프 스케줄러 | AWS Lambda + EventBridge | 일 1회 배치, 사실상 무료 |
+| 리포트 생성 (4종) | GitHub Actions (4개 cron) | 뉴스 파이프라인과 동일 인프라 |
 | 뉴스 파이프라인 | GitHub Actions | 평일 16:30 KST |
 | 재무 파이프라인 | GitHub Actions | 분기 1회 + 수동 실행 |
 
@@ -280,5 +303,5 @@ def get_financials_tool(ticker: str) -> str:
 | Vector DB | ChromaDB | Pinecone, Weaviate | 로컬 실행, 무료, 메타데이터 필터 지원 |
 | Embedding | text-embedding-3-small | ada-002 | 비용 5배 절감, 성능 동등 |
 | LLM | GPT-4o-mini | GPT-4o, Claude 3.5 | Tool-calling 지원, 비용 효율 |
-| 모닝 브리프 스케줄러 | AWS Lambda + EventBridge | EC2 APScheduler, Airflow | 상시 구동 불필요 → 사실상 무료, 콜드스타트 허용(배치) |
+| 리포트 생성 스케줄러 | GitHub Actions (4개 cron) | AWS Lambda + EventBridge, Airflow | 기존 파이프라인 인프라 재활용, 별도 클라우드 설정 불필요 |
 | Pipeline | GitHub Actions | Airflow, Prefect | 별도 인프라 불필요, 프로젝트 규모 적합 |

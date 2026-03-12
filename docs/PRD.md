@@ -14,7 +14,7 @@
   - 단순 RAG 래퍼를 넘어 **Agent가 질문 유형에 따라 필요한 데이터 소스를 스스로 선택**하는 Multi-tool 구조 구현
   - 뉴스(ChromaDB), 공시(DART API), 가격(Yahoo Finance), 재무지표(Supabase) 네 가지 이질적 데이터를 하나의 답변으로 종합
   - 가격 이상 감지(통계 기반)와 AI 설명을 자동 연계하는 데이터 기반 트리거 구현
-  - **장 시작 1시간 전(08:00 KST) 관심종목 모닝 브리프 자동 생성·발송** (AWS Lambda + EventBridge)
+  - **한국/미국 장전·장마감 4종 리포트를 자동 생성하여 인앱 알림으로 전달** (GitHub Actions + Supabase)
   - Next.js + FastAPI + Supabase 마이크로서비스 연계 및 Vercel·EC2 배포
 
 ---
@@ -44,8 +44,8 @@
 | **FR-07** | **세그먼트 기반 개인화** | 사용자 세그먼트에 따라 검색 필터와 시스템 프롬프트를 동시 분기 | FastAPI Agent | ✅ |
 | **FR-08** | **인사이트 스트리밍** | Agent 답변을 SSE 스트리밍으로 실시간 전달 | FastAPI → Next.js → Client | ✅ |
 | **FR-09** | **이력 저장 및 조회** | 인사이트 요청·답변·출처를 Supabase에 저장, 날짜별 이력 제공 | Supabase + Next.js | ✅ |
-| **FR-10** | **재무 데이터 통합** | 분기별 PER·PBR·ROE·매출·영업이익 Supabase 적재, `get_financials_tool` 연동 | DART API + Supabase | 🔲 |
-| **FR-11** | **모닝 브리프 자동 발송** | 매일 08:00 KST 관심종목 AI 인사이트 자동 생성 → 인앱 알림·Web Push | AWS Lambda + EventBridge | 🔲 |
+| **FR-10** | **재무 데이터 통합** | 분기별 PER·PBR·ROE·매출·영업이익 Supabase 적재, `get_financials_tool` 연동 | DART API + Supabase | ✅ |
+| **FR-11** | **리포트 시스템 자동 발송 (4종)** | 한국/미국 장전·장마감 4종 리포트 자동 생성 → 인앱 알림 (08:00·16:30·22:30·07:00 KST) | GitHub Actions + Supabase | 🔲 |
 
 ---
 
@@ -55,7 +55,7 @@
 |---|---|---|
 | **응답 시간** | AI 인사이트 응답 P95 < 5초 | SSE 스트리밍으로 체감 지연 최소화 |
 | **데이터 신선도** | 매일 16:30 이전 ChromaDB 업데이트 완료 | 파이프라인 실패 시 전날 데이터로 폴백 |
-| **모닝 브리프 발송** | 매 평일 08:00 KST ± 5분 | EventBridge cron 기반 |
+| **리포트 발송** | 4종 리포트 각 스케줄 ± 5분 (08:00, 16:30, 22:30, 07:00 KST) | GitHub Actions cron 기반 |
 | **가용성** | 파이프라인 실패 시 Slack 알림 및 자동 재시도 | GitHub Actions 최대 2회 재실행 |
 | **확장성** | 도구(Tool)·세그먼트 타입을 코드 변경 없이 추가 가능 | Config-driven Agent 구조 |
 | **보안** | API Key 및 민감 정보는 환경변수·Secret Manager 관리 | 코드베이스 하드코딩 금지 |
@@ -140,22 +140,60 @@ create table company_profiles (
 
 ---
 
-### 8. 모닝 브리프 설계 (FR-11 상세)
+### 8. 리포트 시스템 설계 (FR-11 상세)
 
+**4종 리포트 타입 및 스케줄:**
+
+| # | 리포트 타입 | report_type | 발행 시각 (KST) | 주요 콘텐츠 |
+|---|---|---|---|---|
+| 1 | 한국 장 전 브리프 | `KOR_PREMARKET` | 08:00 (UTC 23:00) | KOSPI/KOSDAQ 전일 종가, KOR watchlist 종목, 국내 뉴스 요약 |
+| 2 | 한국 장 마감 리포트 | `KOR_CLOSE` | 16:30 (UTC 07:30) | KOSPI/KOSDAQ 당일 종가, KOR watchlist 섹터별 분류, 국내 뉴스 |
+| 3 | 미국 장 전 브리프 | `US_PREMARKET` | 22:30 (UTC 13:30) | 유럽 마감, 미국 선물, US watchlist 종목 |
+| 4 | 미국 장 마감 리포트 | `US_CLOSE` | 07:00 (UTC 22:00) | S&P500/NASDAQ/DOW 종가, US watchlist 종목, 미국 뉴스 |
+
+**리포트 생성 플로우:**
 ```
-매일 08:00 KST (UTC 23:00) — EventBridge → Lambda (Python)
-  ① Supabase watchlist → 유저별 관심종목 조회
-  ② 종목별 전날 뉴스 + 재무 요약 수집
-  ③ FastAPI /api/ai/insight 호출 → 세그먼트별 인사이트 생성
-  ④ Supabase notifications 테이블 저장
-  ⑤ Web Push API (VAPID) → 브라우저 알림 전송
+GitHub Actions cron (4개 스케줄) → report_generator.py
+  ① 시장 스냅샷 수집 (지수/환율/종목 종가)
+  ② Supabase watchlist → 유저별 관심종목 조회 (시장별 분기)
+  ③ Agent 기반 뉴스 요약 + 섹터별 종목 인사이트 생성
+  ④ market_snapshots 테이블 저장 (공유 데이터)
+  ⑤ notifications 테이블 저장 (유저별 개인화 리포트)
 ```
 
-**배치 처리 전략:**
-- 동시 요청 제한: 최대 5개 병렬 (Rate limit 방지)
-- 실패 시: 해당 종목 건너뛰고 계속 진행 (부분 성공 허용)
-- Lambda timeout: 5분 (일반적인 watchlist 규모에서 충분)
-- 스케줄러 위치: Lambda (상시 구동 불필요) ← EC2 APScheduler 대비 비용 효율
+**Supabase 스키마:**
+```sql
+-- 리포트/알림 저장
+create table public.notifications (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid references auth.users not null,
+  report_type text not null, -- 'KOR_PREMARKET' | 'KOR_CLOSE' | 'US_PREMARKET' | 'US_CLOSE'
+  is_read     boolean default false,
+  payload     jsonb not null, -- { market, stocks, top_news, market_summary }
+  created_at  timestamptz default now()
+);
+
+-- 시장 스냅샷 (공유 데이터, 리포트 생성 시 저장)
+create table public.market_snapshots (
+  id          uuid primary key default gen_random_uuid(),
+  report_type text not null,
+  snapshot_date date not null,
+  payload     jsonb not null,
+  created_at  timestamptz default now(),
+  unique (report_type, snapshot_date)
+);
+```
+
+**데이터 파이프라인 보완 필요 사항:**
+- KOSPI/KOSDAQ 지수 수집 추가 (`fdr.DataReader("KS11")`, `fdr.DataReader("KQ11")`)
+- USD/KRW 환율 수집 추가 (`fdr.DataReader("USD/KRW")`)
+- US 파이프라인 cron 분리 (07:00 KST — 미국 장 마감 후)
+- daily_prices Supabase 적재 활성화
+
+**프론트엔드 리포트 UI:**
+- BottomNav에 리포트 탭 (벨 아이콘) + 미읽음 배지
+- `/reports` 리포트 목록 페이지 (날짜별, 4종 아이콘 구분)
+- `/reports/[id]` 리포트 상세 페이지 (무드 헤더, 지수, 섹터별 종목, 뉴스)
 
 ---
 
@@ -167,6 +205,6 @@ create table company_profiles (
 | **Phase 2** | Multi-tool AI 에이전트 | AgentExecutor + 4개 도구, 세그먼트 분기, 스트리밍 | ✅ 완료 |
 | **Phase 3** | Next.js + Supabase 프론트엔드 | 인증·watchlist·실시간 가격·인사이트 UI | ✅ 완료 |
 | **Phase 4** | EC2 + Vercel 배포 | FastAPI EC2 배포, Next.js Vercel 배포, E2E 검증 | 🔲 진행 예정 |
-| **Phase 5** | 재무 데이터 통합 | DART 재무지표, get_financials_tool, Supabase 적재 | 🔲 진행 예정 |
-| **Phase 6** | 모닝 브리프 | Lambda + EventBridge, notifications UI, Web Push | 🔲 진행 예정 |
+| **Phase 5** | 재무 데이터 통합 | DART 재무지표, get_financials_tool, Supabase 적재 | ✅ 완료 |
+| **Phase 6** | 4종 리포트 시스템 | 한국/미국 장전·장마감 리포트, notifications UI, 데이터 파이프라인 보완 | 🔲 진행 예정 |
 | **Phase 7** | 품질 평가 및 최적화 | Recall@5, 도구 선택 정확도, 포트폴리오 문서화 | 🔲 진행 예정 |
