@@ -94,20 +94,23 @@ sudo systemctl enable --now docker
 sudo usermod -aG docker ec2-user
 # 재로그인 후 적용
 
-# 3. Docker Compose 설치
-sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" \
-  -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
+# 3. Docker Compose v2 설치
+DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
+mkdir -p $DOCKER_CONFIG/cli-plugins
+curl -SL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64" \
+  -o $DOCKER_CONFIG/cli-plugins/docker-compose
+chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
 
 # 4. 코드 배포
 git clone https://github.com/sammy0329/finsight-ai-agent.git
 cd finsight-ai-agent
 cp .env.example .env
-# .env에 OPENAI_API_KEY, INTERNAL_API_KEY 등 실제 값 입력
+# .env에 OPENAI_API_KEY, INTERNAL_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
+# ALLOWED_ORIGINS=https://your-app.vercel.app 입력
 
-# 5. 서비스 실행
-docker-compose up -d --build
-docker-compose ps    # 상태 확인
+# 5. 프로덕션 서비스 실행 (FastAPI + ChromaDB만)
+docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml ps    # 상태 확인
 
 # 6. 헬스체크
 curl http://localhost:8000/health
@@ -118,7 +121,7 @@ curl http://localhost:8000/health
 
 ```bash
 git pull origin main
-docker-compose up -d --build --no-deps fastapi
+docker compose -f docker-compose.prod.yml up -d --build --no-deps fastapi
 ```
 
 ---
@@ -142,8 +145,14 @@ flowchart LR
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase 프로젝트 URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (서버사이드 전용) |
 | `FASTAPI_URL` | `http://{EC2_ELASTIC_IP}:8000` |
 | `INTERNAL_API_KEY` | Next.js ↔ FastAPI 내부 인증키 (`.env`와 동일 값) |
+
+> **CORS 설정**: EC2 `.env`의 `ALLOWED_ORIGINS`에 Vercel 배포 URL을 추가해야 합니다.
+> ```
+> ALLOWED_ORIGINS=https://your-app.vercel.app,http://localhost:3000
+> ```
 
 ---
 
@@ -218,17 +227,20 @@ aws events put-rule \
 | `NAVER_CLIENT_SECRET` | Naver Search API Client Secret |
 | `NEWS_API_KEY` | NewsAPI 키 |
 | `EC2_HOST` | EC2 탄력적 IP |
-| `EC2_SSH_KEY` | EC2 접속용 PEM 키 (Base64) |
+| `EC2_SSH_KEY` | EC2 접속용 PEM 키 (Base64 인코딩: `base64 -i finsight-key.pem`) |
 | `SUPABASE_URL` | Supabase 프로젝트 URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | 재무 파이프라인 upsert용 |
-| `SLACK_WEBHOOK_URL` | 파이프라인 알림용 Slack Webhook |
+| `SUPABASE_SERVICE_ROLE_KEY` | 파이프라인·리포트 upsert용 service role key |
+| `INTERNAL_API_KEY` | FastAPI 내부 인증키 |
+| `SLACK_WEBHOOK_URL` | 파이프라인 알림용 Slack Webhook (선택) |
 
 ### 파이프라인 종류
 
 | 워크플로우 | 스케줄 | 역할 |
 |---|---|---|
-| `daily-pipeline.yml` | 평일 16:30 KST | 뉴스·공시 수집 → ChromaDB upsert |
+| `daily-pipeline.yml` | 평일 UTC 07:30 (KST 16:30) | KOR 뉴스·공시 수집 → ChromaDB upsert |
+| `us-pipeline.yml` | 평일 UTC 22:00 (KST 07:00) | US 뉴스 수집 → ChromaDB upsert |
 | `financial-pipeline.yml` | 분기 1회 + 수동 | 재무제표 수집 → Supabase upsert |
+| `report-pipeline.yml` | 4종 cron (UTC 07:45 / 22:45 / 23:00 / 13:30) | 리포트 생성 → notifications 삽입 |
 
 ---
 

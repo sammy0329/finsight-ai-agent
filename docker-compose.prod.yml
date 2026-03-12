@@ -1,0 +1,54 @@
+# EC2 프로덕션 배포용 Docker Compose
+# FastAPI + ChromaDB만 실행 (Next.js는 Vercel, DB는 Supabase)
+#
+# 실행:
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# 환경변수: .env 파일에서 로드 (cp .env.example .env 후 실제 값 입력)
+
+services:
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: finsight-chromadb
+    # EC2 외부 노출 금지 — FastAPI에서 내부 네트워크로만 접근
+    expose:
+      - "8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'cat < /dev/null > /dev/tcp/localhost/8000'"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  fastapi:
+    build:
+      context: ./ai-server
+      dockerfile: ../docker/Dockerfile.fastapi
+    container_name: finsight-fastapi
+    ports:
+      # EC2 Security Group에서 8000 포트 허용 (Vercel IP 제한 권장)
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      # Vercel 도메인을 쉼표로 구분하여 입력 (예: https://finsight.vercel.app)
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000}
+    depends_on:
+      chromadb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  chroma_data:
