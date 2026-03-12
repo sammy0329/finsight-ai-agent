@@ -1,0 +1,166 @@
+name: Report Generation Pipeline
+
+on:
+  # T-610: 한국 장 마감 리포트 — UTC 07:45 (KST 16:45, 데이터 파이프라인 완료 후)
+  # T-611: 미국 장 마감 리포트 — UTC 22:45 (KST 07:45, US 파이프라인 완료 후)
+  # T-612: 한국 장 전 브리프   — UTC 23:00 (KST 08:00)
+  # T-613: 미국 장 전 브리프   — UTC 13:30 (KST 22:30)
+  schedule:
+    - cron: "45 7 * * 1-5"   # KOR_CLOSE
+    - cron: "45 22 * * 1-5"  # US_CLOSE
+    - cron: "0 23 * * 0-4"   # KOR_PREMARKET (일~목 UTC 23 = 월~금 KST 08)
+    - cron: "30 13 * * 0-4"  # US_PREMARKET  (일~목 UTC 13 = 월~금 KST 22)
+
+  # 수동 실행
+  workflow_dispatch:
+    inputs:
+      report_type:
+        description: "리포트 타입"
+        required: true
+        type: choice
+        options:
+          - KOR_PREMARKET
+          - KOR_CLOSE
+          - US_PREMARKET
+          - US_CLOSE
+      date:
+        description: "기준일 (YYYY-MM-DD, 미입력 시 오늘)"
+        required: false
+        default: ""
+
+env:
+  PYTHON_VERSION: "3.11"
+  WORKING_DIR: ai-server
+
+jobs:
+  generate-report:
+    name: Generate Report (${{ github.event.inputs.report_type || 'scheduled' }})
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install dependencies
+        working-directory: ${{ env.WORKING_DIR }}
+        run: poetry install --only main --no-interaction
+
+      - name: Determine report type
+        id: report-type
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "type=${{ github.event.inputs.report_type }}" >> $GITHUB_OUTPUT
+          else
+            # UTC 시각 기반 자동 추론
+            HOUR=$(date -u +%H)
+            MIN=$(date -u +%M)
+            if [ "$HOUR" = "23" ]; then
+              echo "type=KOR_PREMARKET" >> $GITHUB_OUTPUT
+            elif [ "$HOUR" = "07" ]; then
+              echo "type=KOR_CLOSE" >> $GITHUB_OUTPUT
+            elif [ "$HOUR" = "13" ]; then
+              echo "type=US_PREMARKET" >> $GITHUB_OUTPUT
+            elif [ "$HOUR" = "22" ]; then
+              echo "type=US_CLOSE" >> $GITHUB_OUTPUT
+            else
+              echo "지원하지 않는 실행 시각: UTC ${HOUR}:${MIN}"
+              exit 1
+            fi
+          fi
+
+      - name: Set pipeline date
+        id: set-date
+        run: |
+          if [ -z "${{ github.event.inputs.date }}" ]; then
+            echo "date=$(date '+%Y-%m-%d')" >> $GITHUB_OUTPUT
+          else
+            echo "date=${{ github.event.inputs.date }}" >> $GITHUB_OUTPUT
+          fi
+
+      # ChromaDB (EC2)에 SSH 터널 설정
+      - name: Setup SSH tunnel to EC2 ChromaDB
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$EC2_SSH_KEY" | base64 -d > ~/.ssh/finsight-key.pem
+          chmod 600 ~/.ssh/finsight-key.pem
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+          ssh -i ~/.ssh/finsight-key.pem \
+              -L 8001:localhost:8001 \
+              -N -f \
+              ec2-user@"$EC2_HOST"
+          echo "SSH tunnel established"
+
+      - name: Run report pipeline
+        id: run-pipeline
+        working-directory: ${{ env.WORKING_DIR }}
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY }}
+          CHROMA_HOST: localhost
+          CHROMA_PORT: "8001"
+          REPORT_TYPE: ${{ steps.report-type.outputs.type }}
+          PIPELINE_DATE: ${{ steps.set-date.outputs.date }}
+        run: |
+          poetry run python -m app.pipeline.run_report_pipeline \
+            --date "$PIPELINE_DATE"
+
+      # SSH 터널 종료
+      - name: Teardown SSH tunnel
+        if: always()
+        run: pkill -f "ssh.*8001" || true
+
+      # 성공 Slack 알림
+      - name: Notify Slack on success
+        if: success()
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          payload: |
+            {
+              "text": "✅ *FinSight 리포트 생성 완료*",
+              "attachments": [{
+                "color": "good",
+                "fields": [
+                  {"title": "리포트 타입", "value": "${{ steps.report-type.outputs.type }}", "short": true},
+                  {"title": "기준일", "value": "${{ steps.set-date.outputs.date }}", "short": true},
+                  {"title": "트리거", "value": "${{ github.event_name }}", "short": true},
+                  {"title": "실행 링크", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}", "short": false}
+                ]
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+      # 실패 Slack 알림
+      - name: Notify Slack on failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          payload: |
+            {
+              "text": "🚨 *FinSight 리포트 생성 실패*",
+              "attachments": [{
+                "color": "danger",
+                "fields": [
+                  {"title": "리포트 타입", "value": "${{ steps.report-type.outputs.type }}", "short": true},
+                  {"title": "기준일", "value": "${{ steps.set-date.outputs.date }}", "short": true},
+                  {"title": "실행 링크", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}", "short": false}
+                ]
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
