@@ -229,12 +229,12 @@ CHROMA_HOST=localhost CHROMA_PORT=8001 \
 | Phase | 목표 | 상태 |
 |---|---|---|
 | Phase 1 | 데이터 파이프라인 (뉴스·공시 수집 → ChromaDB) | ✅ 완료 |
-| Phase 2 | Multi-tool AI 에이전트 (AgentExecutor + 4개 도구) | ✅ 완료 |
+| Phase 2 | Multi-tool AI 에이전트 (AgentExecutor + 5개 도구) | ✅ 완료 |
 | Phase 3 | Next.js + Supabase 프론트엔드 | ✅ 완료 |
 | Phase 4 | EC2 + Vercel 배포 | 🔲 진행 예정 |
 | Phase 5 | 재무 데이터 통합 (DART PER/PBR/ROE + get_financials_tool) | ✅ 완료 |
-| Phase 6 | 4종 리포트 시스템 (한국/미국 장전·장마감 리포트 + notifications UI) | 🔲 진행 예정 |
-| Phase 7 | 품질 평가 및 포트폴리오 문서화 | 🔲 진행 예정 |
+| Phase 6 | 4종 리포트 시스템 (파이프라인 + Supabase 스키마 + notifications UI) | ✅ 완료 |
+| Phase 7 | 품질 평가 인프라 + 포트폴리오 문서화 | ✅ 완료 (측정은 배포 후) |
 
 ---
 
@@ -245,7 +245,9 @@ CHROMA_HOST=localhost CHROMA_PORT=8001 \
 | [PRD.md](./docs/PRD.md) | 제품 요구사항 정의서 — 기능·비기능 요구사항, Agent 도구 설계 |
 | [TECH_STACK.md](./docs/TECH_STACK.md) | 기술 스택 명세 — 아키텍처 다이어그램, 시퀀스, 기술 선택 근거 |
 | [TASK.md](./docs/TASK.md) | Phase/Epic/Task 단위 작업 명세 및 진행 상태 |
-| [DEPLOYMENT.md](./docs/DEPLOYMENT.md) | 배포 전략 및 인프라 구성 (EC2, Vercel, Lambda) |
+| [DEPLOYMENT.md](./docs/DEPLOYMENT.md) | 배포 전략 및 인프라 구성 (EC2, Vercel) |
+| [PORTFOLIO.md](./docs/PORTFOLIO.md) | 기술 의사결정 근거, 금융 도메인 특화 설계, 수치 결과 |
+| [eval_results.md](./docs/eval_results.md) | Recall@5, 도구 선택 정확도, 환각 비율 평가 결과 |
 
 ---
 

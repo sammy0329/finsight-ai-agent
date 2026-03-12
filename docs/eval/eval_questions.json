@@ -1,0 +1,272 @@
+[
+  {
+    "id": "A-01",
+    "segment": "A",
+    "type": "뉴스형",
+    "query": "삼성전자 최근 뉴스 알려줘",
+    "ticker": "005930",
+    "expected_tools": ["search_news_tool"],
+    "relevant_keywords": ["삼성전자", "반도체", "HBM", "실적"]
+  },
+  {
+    "id": "A-02",
+    "segment": "A",
+    "type": "공시형",
+    "query": "LG전자 최근 공시 있어?",
+    "ticker": "066570",
+    "expected_tools": ["get_dart_tool"],
+    "relevant_keywords": ["LG전자", "공시", "사업보고"]
+  },
+  {
+    "id": "A-03",
+    "segment": "A",
+    "type": "가격형",
+    "query": "삼성전자 현재 주가 얼마야?",
+    "ticker": "005930",
+    "expected_tools": ["get_price_tool"],
+    "relevant_keywords": ["현재가", "005930", "KRW"]
+  },
+  {
+    "id": "A-04",
+    "segment": "A",
+    "type": "재무형",
+    "query": "삼성전자 PER이 어떻게 되나요?",
+    "ticker": "005930",
+    "expected_tools": ["get_financials_tool"],
+    "relevant_keywords": ["PER", "PBR", "재무지표"]
+  },
+  {
+    "id": "A-05",
+    "segment": "A",
+    "type": "가격형",
+    "query": "삼성전자 주가에 이상한 움직임 있어?",
+    "ticker": "005930",
+    "expected_tools": ["price_anomaly_tool"],
+    "relevant_keywords": ["Z-score", "이상 감지", "수익률"]
+  },
+  {
+    "id": "A-06",
+    "segment": "A",
+    "type": "뉴스형",
+    "query": "AAPL 최신 뉴스 뭐 있어?",
+    "ticker": "AAPL",
+    "expected_tools": ["search_news_tool"],
+    "relevant_keywords": ["Apple", "AAPL", "아이폰"]
+  },
+  {
+    "id": "A-07",
+    "segment": "A",
+    "type": "복합형",
+    "query": "삼성전자 배당 안정성 어때? 리스크는?",
+    "ticker": "005930",
+    "expected_tools": ["get_financials_tool", "search_news_tool"],
+    "relevant_keywords": ["배당", "안정성", "리스크", "재무"]
+  },
+  {
+    "id": "A-08",
+    "segment": "A",
+    "type": "뉴스형",
+    "query": "코스피 시장 요즘 분위기 어때?",
+    "ticker": "005930",
+    "expected_tools": ["search_news_tool"],
+    "relevant_keywords": ["코스피", "시장", "KOSPI"]
+  },
+  {
+    "id": "A-09",
+    "segment": "A",
+    "type": "재무형",
+    "query": "AAPL 이번 분기 실적 어때?",
+    "ticker": "AAPL",
+    "expected_tools": ["get_financials_tool"],
+    "relevant_keywords": ["매출", "영업이익", "EPS", "실적"]
+  },
+  {
+    "id": "A-10",
+    "segment": "A",
+    "type": "복합형",
+    "query": "SK하이닉스 지금 들어가도 안전해?",
+    "ticker": "000660",
+    "expected_tools": ["get_price_tool", "get_financials_tool", "search_news_tool"],
+    "relevant_keywords": ["SK하이닉스", "리스크", "안전", "전망"]
+  },
+  {
+    "id": "B-01",
+    "segment": "B",
+    "type": "가격형",
+    "query": "NVDA 주가 얼마야?",
+    "ticker": "NVDA",
+    "expected_tools": ["get_price_tool"],
+    "relevant_keywords": ["현재가", "NVDA", "USD"]
+  },
+  {
+    "id": "B-02",
+    "segment": "B",
+    "type": "뉴스형",
+    "query": "NVDA 관련 최신 AI 뉴스 뭐 있어?",
+    "ticker": "NVDA",
+    "expected_tools": ["search_news_tool"],
+    "relevant_keywords": ["NVIDIA", "AI", "GPU", "데이터센터"]
+  },
+  {
+    "id": "B-03",
+    "segment": "B",
+    "type": "가격형",
+    "query": "삼성전자 오늘 급등한 거야?",
+    "ticker": "005930",
+    "expected_tools": ["price_anomaly_tool"],
+    "relevant_keywords": ["급등", "Z-score", "이상 감지"]
+  },
+  {
+    "id": "B-04",
+    "segment": "B",
+    "type": "뉴스형",
+    "query": "테슬라 요즘 뉴스 뭐 있어?",
+    "ticker": "TSLA",
+    "expected_tools": ["search_news_tool"],
+    "relevant_keywords": ["Tesla", "TSLA", "전기차", "머스크"]
+  },
+  {
+    "id": "B-05",
+    "segment": "B",
+    "type": "재무형",
+    "query": "MSFT 이번 분기 실적 어때? 성장세야?",
+    "ticker": "MSFT",
+    "expected_tools": ["get_financials_tool"],
+    "relevant_keywords": ["Microsoft", "매출", "성장", "영업이익"]
+  },
+  {
+    "id": "B-06",
+    "segment": "B",
+    "type": "공시형",
+    "query": "카카오 최근 공시 있어?",
+    "ticker": "035720",
+    "expected_tools": ["get_dart_tool"],
+    "relevant_keywords": ["카카오", "공시", "사업"]
+  },
+  {
+    "id": "B-07",
+    "segment": "B",
+    "type": "복합형",
+    "query": "NVDA 지금 매수 타이밍이야?",
+    "ticker": "NVDA",
+    "expected_tools": ["get_price_tool", "search_news_tool", "price_anomaly_tool"],
+    "relevant_keywords": ["NVDA", "타이밍", "모멘텀", "성장"]
+  },
+  {
+    "id": "B-08",
+    "segment": "B",
+    "type": "가격형",
+    "query": "AAPL 주가에 이상한 움직임 있어?",
+    "ticker": "AAPL",
+    "expected_tools": ["price_anomaly_tool"],
+    "relevant_keywords": ["AAPL", "Z-score", "이상 감지", "수익률"]
+  },
+  {
+    "id": "B-09",
+    "segment": "B",
+    "type": "뉴스형",
+    "query": "반도체 섹터 관련 뉴스 알려줘",
+    "ticker": "005930",
+    "expected_tools": ["search_news_tool"],
+    "relevant_keywords": ["반도체", "HBM", "DRAM", "섹터"]
+  },
+  {
+    "id": "B-10",
+    "segment": "B",
+    "type": "복합형",
+    "query": "삼성전기 지금 상승 모멘텀 있어?",
+    "ticker": "009150",
+    "expected_tools": ["get_price_tool", "price_anomaly_tool", "search_news_tool"],
+    "relevant_keywords": ["삼성전기", "모멘텀", "상승", "전망"]
+  },
+  {
+    "id": "C-01",
+    "segment": "C",
+    "type": "재무형",
+    "query": "삼성전자 PBR 어떻게 돼? 저평가야?",
+    "ticker": "005930",
+    "expected_tools": ["get_financials_tool"],
+    "relevant_keywords": ["PBR", "저평가", "내재가치", "밸류에이션"]
+  },
+  {
+    "id": "C-02",
+    "segment": "C",
+    "type": "재무형",
+    "query": "AAPL ROE 얼마야?",
+    "ticker": "AAPL",
+    "expected_tools": ["get_financials_tool"],
+    "relevant_keywords": ["ROE", "수익성", "자기자본"]
+  },
+  {
+    "id": "C-03",
+    "segment": "C",
+    "type": "복합형",
+    "query": "NAVER 내재가치 분석해줘",
+    "ticker": "035420",
+    "expected_tools": ["get_financials_tool", "search_news_tool"],
+    "relevant_keywords": ["NAVER", "내재가치", "PER", "PBR", "ROE"]
+  },
+  {
+    "id": "C-04",
+    "segment": "C",
+    "type": "뉴스형",
+    "query": "삼성전자 사업 전략 관련 뉴스 뭐 있어?",
+    "ticker": "005930",
+    "expected_tools": ["search_news_tool"],
+    "relevant_keywords": ["삼성전자", "사업", "전략", "R&D"]
+  },
+  {
+    "id": "C-05",
+    "segment": "C",
+    "type": "공시형",
+    "query": "삼성전자 최근 공시 뭐 있어?",
+    "ticker": "005930",
+    "expected_tools": ["get_dart_tool"],
+    "relevant_keywords": ["삼성전자", "공시", "사업보고서"]
+  },
+  {
+    "id": "C-06",
+    "segment": "C",
+    "type": "재무형",
+    "query": "SK하이닉스 영업이익률 어때?",
+    "ticker": "000660",
+    "expected_tools": ["get_financials_tool"],
+    "relevant_keywords": ["영업이익", "수익성", "SK하이닉스"]
+  },
+  {
+    "id": "C-07",
+    "segment": "C",
+    "type": "가격형",
+    "query": "GOOGL 현재 주가 알려줘",
+    "ticker": "GOOGL",
+    "expected_tools": ["get_price_tool"],
+    "relevant_keywords": ["현재가", "GOOGL", "USD"]
+  },
+  {
+    "id": "C-08",
+    "segment": "C",
+    "type": "복합형",
+    "query": "MSFT 저평가 구간이야? 매수 고려할 만해?",
+    "ticker": "MSFT",
+    "expected_tools": ["get_financials_tool", "get_price_tool"],
+    "relevant_keywords": ["Microsoft", "저평가", "PER", "밸류에이션"]
+  },
+  {
+    "id": "C-09",
+    "segment": "C",
+    "type": "뉴스형",
+    "query": "미국 기술주 장기 전망 관련 뉴스 뭐 있어?",
+    "ticker": "AAPL",
+    "expected_tools": ["search_news_tool"],
+    "relevant_keywords": ["기술주", "장기", "전망", "미국"]
+  },
+  {
+    "id": "C-10",
+    "segment": "C",
+    "type": "복합형",
+    "query": "카카오 지금 저평가 구간이야?",
+    "ticker": "035720",
+    "expected_tools": ["get_financials_tool", "search_news_tool"],
+    "relevant_keywords": ["카카오", "저평가", "PBR", "내재가치"]
+  }
+]
