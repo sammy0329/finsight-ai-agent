@@ -13,6 +13,7 @@ from langchain_openai import ChatOpenAI
 from app.agent.prompts import get_agent_prompt_for_segment
 from app.agent.tools import (
     get_dart_tool,
+    get_financials_tool,
     get_price_tool,
     price_anomaly_tool,
     search_news_tool,
@@ -36,7 +37,13 @@ def create_agent_executor(segment: str, openai_api_key: str, **kwargs) -> AgentE
     prompt = get_agent_prompt_for_segment(segment)
     llm = ChatOpenAI(model="gpt-4o-mini", api_key=openai_api_key)
 
-    tools = [search_news_tool, get_dart_tool, get_price_tool, price_anomaly_tool]
+    tools = [
+        search_news_tool,
+        get_dart_tool,
+        get_price_tool,
+        price_anomaly_tool,
+        get_financials_tool,
+    ]
 
     agent = create_openai_tools_agent(llm, tools, prompt)
 

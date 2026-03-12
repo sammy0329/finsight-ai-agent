@@ -1,10 +1,11 @@
-"""T-220 ~ T-223: Multi-tool Agent 도구 정의.
+"""T-220 ~ T-223, T-507: Multi-tool Agent 도구 정의.
 
-4개의 LangChain Tool을 정의한다:
+5개의 LangChain Tool을 정의한다:
 - search_news_tool: ChromaDB RAG 뉴스 검색
 - get_dart_tool: DART 공시 목록 조회
 - get_price_tool: Yahoo Finance 실시간 가격 조회
 - price_anomaly_tool: 수익률 Z-score 이상 감지
+- get_financials_tool: Supabase 분기 재무지표 조회
 """
 
 from __future__ import annotations
@@ -343,3 +344,65 @@ def get_price_tool(ticker: str) -> str:
 def price_anomaly_tool(ticker: str) -> str:
     """최근 20일 수익률의 Z-score를 계산하여 가격 이상을 감지합니다. 티커를 입력하세요."""
     return detect_price_anomaly(ticker)
+
+
+# ── T-507: 재무지표 조회 ──────────────────────────────────────────────
+
+
+def get_financials(ticker: str) -> str:
+    """Supabase에서 최신 분기 재무지표를 조회한다.
+
+    Args:
+        ticker: 종목 티커 (예: 005930, AAPL).
+
+    Returns:
+        포맷팅된 재무지표 문자열 또는 오류 메시지.
+    """
+    if not settings.supabase_url or not settings.supabase_service_role_key:
+        return f"{ticker} 재무지표 서비스가 설정되지 않았습니다."
+
+    try:
+        from supabase import create_client
+
+        client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+        result = (
+            client.table("financial_metrics")
+            .select("*")
+            .eq("ticker", ticker)
+            .order("period", desc=True)
+            .limit(1)
+            .execute()
+        )
+    except Exception:
+        return f"{ticker} 재무지표 조회 중 오류가 발생했습니다."
+
+    if not result.data:
+        return f"{ticker}의 재무지표 데이터가 없습니다."
+
+    row = result.data[0]
+    period = row.get("period", "")
+
+    def fmt_num(val: float | None, unit: str = "") -> str:
+        if val is None:
+            return "N/A"
+        if unit == "억":
+            return f"{val / 1e8:,.0f}억원"
+        if unit == "%":
+            return f"{val * 100:.1f}%"
+        return f"{val:.2f}"
+
+    lines = [
+        f"[{ticker} 재무지표 — {period}]",
+        f"PER: {fmt_num(row.get('per'))}배  |  PBR: {fmt_num(row.get('pbr'))}배  |  ROE: {fmt_num(row.get('roe'), '%')}",
+        f"매출액: {fmt_num(row.get('revenue'), '억')}  |  영업이익: {fmt_num(row.get('op_income'), '억')}",
+        f"EPS: {fmt_num(row.get('eps'))}원",
+    ]
+    return "\n".join(lines)
+
+
+@tool
+def get_financials_tool(ticker: str) -> str:
+    """Supabase에서 종목의 최신 분기 재무지표(PER, PBR, ROE, 매출, 영업이익)를 조회합니다.
+    PER/PBR/ROE 등 밸류에이션·수익성 관련 질문 시 사용하세요. 티커를 입력하세요 (예: 005930, AAPL).
+    """
+    return get_financials(ticker)

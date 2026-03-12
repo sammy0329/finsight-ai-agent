@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { type Segment, SEGMENT_LABEL, SEGMENT_ICON } from '@/types'
+import FinancialsCard from '@/components/FinancialsCard'
 
 const SEGMENT_COLOR: Record<Segment, string> = { A: '#3b82f6', B: '#ef4444', C: '#22c55e' }
 
@@ -188,6 +189,9 @@ export default function InsightClient({
             {priceDate && <span>기준일 {priceDate}</span>}
           </div>
         </div>
+
+        {/* 재무지표 카드 */}
+        <FinancialsCard ticker={ticker} />
 
         {/* 이상 감지 카드 */}
         {anomaly?.is_anomaly && (

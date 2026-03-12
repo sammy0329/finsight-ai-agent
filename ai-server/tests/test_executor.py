@@ -101,7 +101,7 @@ class TestCreateAgentExecutor:
     @patch("app.agent.executor.ChatOpenAI")
     @patch("app.agent.executor.create_openai_tools_agent")
     @patch("app.agent.executor.AgentExecutor")
-    def test_includes_four_tools(self, mock_agent_executor_cls, mock_create_agent, mock_llm_cls):
+    def test_includes_five_tools(self, mock_agent_executor_cls, mock_create_agent, mock_llm_cls):
         """4개의 도구가 Agent에 등록된다."""
         from app.agent.executor import create_agent_executor
 
@@ -116,7 +116,7 @@ class TestCreateAgentExecutor:
 
         call_kwargs = mock_create_agent.call_args
         tools = call_kwargs[1].get("tools") or call_kwargs[0][1]
-        assert len(tools) == 4
+        assert len(tools) == 5
 
     def test_raises_on_invalid_segment(self):
         """유효하지 않은 세그먼트에서 ValueError를 발생시킨다."""

@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     chroma_host: str = "localhost"
     chroma_port: int = 8001
     internal_api_key: str
+    supabase_url: str = ""
+    supabase_service_role_key: str = ""
 
 
 settings = Settings()
