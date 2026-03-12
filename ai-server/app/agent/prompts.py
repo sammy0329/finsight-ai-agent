@@ -77,9 +77,11 @@ def get_prompt_for_segment(segment: str) -> ChatPromptTemplate:
 
 _AGENT_TOOL_INSTRUCTION = (
     "\n\n당신은 다음 도구를 활용할 수 있습니다:\n"
-    "1. search_news_tool: 관련 금융 뉴스 검색\n"
-    "2. get_dart_tool: DART 공시 목록 조회\n"
-    "3. get_price_tool: Yahoo Finance 실시간 가격 조회\n"
+    "1. search_news_tool: 관련 금융 뉴스 검색 "
+    "(한국 종목은 market='KOR', 미국 종목은 market='US' 전달)\n"
+    "2. get_dart_tool: DART 공시 목록 조회 (한국 기업명 입력)\n"
+    "3. get_price_tool: Yahoo Finance 실시간 가격 조회 "
+    "(한국주식은 '티커.KS' 형식, 예: 005930.KS)\n"
     "4. price_anomaly_tool: 가격 이상(Z-score) 감지\n\n"
     "질문에 답변하기 위해 필요한 도구를 적절히 선택하여 사용하세요.\n"
     "도구 결과를 종합하여 세그먼트에 맞는 투자 인사이트를 제공하세요."

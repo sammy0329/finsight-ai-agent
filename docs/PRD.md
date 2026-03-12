@@ -2,7 +2,7 @@
 
 **프로젝트명:** 고객 세그먼트 기반 맞춤형 투자 인사이트 AI 에이전트 (FinSight Agent)
 
-**목표:** 뉴스·공시·실시간 가격 데이터를 다중 도구(Multi-tool)로 연계하는 LangChain 에이전트를 구축하고, 사용자 투자 성향(세그먼트)에 따라 검색 전략과 답변 관점을 동시에 분기하는 MSA 기반 개인화 투자 인사이트 서비스 구현.
+**목표:** 뉴스·공시·실시간 가격·재무 데이터를 다중 도구(Multi-tool)로 연계하는 LangChain 에이전트를 구축하고, 사용자 투자 성향(세그먼트)에 따라 검색 전략과 답변 관점을 동시에 분기하며, 장 시작 전 모닝 브리프를 자동 발송하는 MSA 기반 개인화 투자 인사이트 서비스 구현.
 
 ---
 
@@ -12,8 +12,9 @@
 - **비즈니스 목표:** 고객 세그멘테이션에 따른 맞춤형 정보 제공으로 고객 인게이지먼트 향상 및 증권사 플랫폼 체류 시간 증대.
 - **기술적 목표:**
   - 단순 RAG 래퍼를 넘어 **Agent가 질문 유형에 따라 필요한 데이터 소스를 스스로 선택**하는 Multi-tool 구조 구현
-  - 뉴스(ChromaDB), 공시(DART API), 가격(Yahoo Finance) 세 가지 이질적 데이터를 하나의 답변으로 종합
+  - 뉴스(ChromaDB), 공시(DART API), 가격(Yahoo Finance), 재무지표(Supabase) 네 가지 이질적 데이터를 하나의 답변으로 종합
   - 가격 이상 감지(통계 기반)와 AI 설명을 자동 연계하는 데이터 기반 트리거 구현
+  - **장 시작 1시간 전(08:00 KST) 관심종목 모닝 브리프 자동 생성·발송** (AWS Lambda + EventBridge)
   - Next.js + FastAPI + Supabase 마이크로서비스 연계 및 Vercel·EC2 배포
 
 ---
@@ -26,23 +27,25 @@
 |---|---|---|---|---|
 | **안전추구형 (A형)** | 원금 손실을 극도로 꺼리며 안정적 수익 우선 | 배당주, 우량주, 국채 | 리스크·배당 뉴스 우선 | 보수적, 리스크 중심 |
 | **위험감수형 (B형)** | 높은 변동성을 감수, 시장 초과 수익 지향 | 성장주, 테마주, 단기 모멘텀 | 가격 이상·급등락 뉴스 우선 | 공격적, 기회 중심 |
-| **가치투자형 (C형)** | 펀더멘털·장기 산업 전망 기반 우량주 투자 | 실적주, 저PER, 산업 대표주 | 공시·실적 문서 우선 | 분석적, 장기 관점 |
+| **가치투자형 (C형)** | 펀더멘털·장기 산업 전망 기반 우량주 투자 | 실적주, 저PER, 산업 대표주 | 공시·실적·재무 문서 우선 | 분석적, 장기 관점 |
 
 ---
 
 ### 3. 핵심 요구사항 (Functional Requirements)
 
-| 요구사항 ID | 기능명 | 설명 | 담당 시스템 |
-|---|---|---|---|
-| **FR-01** | **사용자 프로필 관리** | 투자 성향(A/B/C), 관심종목 watchlist 데이터 저장·관리 | Next.js + Supabase |
-| **FR-02** | **금융 데이터 파이프라인** | 매일 장 마감 후(16:30 KST) 뉴스·공시 자동 수집·벡터화·ChromaDB 적재 | Python + GitHub Actions |
-| **FR-03** | **데이터 정제 및 벡터화** | 수집 텍스트 청킹·임베딩, 메타데이터(ticker·category·source) 부착 후 ChromaDB upsert | Python + LangChain |
-| **FR-04** | **실시간 가격 연동** | Yahoo Finance API로 관심종목 실시간 종가·등락률, KOSPI/NASDAQ/환율 시장 요약 제공 | Next.js (lib/yahoo.ts) |
-| **FR-05** | **가격 이상 감지** | 최근 N일 표준편차 대비 당일 변동폭 Z-score 산출 → 이상 감지 시 자동 인사이트 트리거 | FastAPI (price_anomaly tool) |
-| **FR-06** | **Multi-tool AI 에이전트** | Agent가 질문 유형 판단 → 필요한 도구(뉴스 검색 / 공시 조회 / 가격 분석)를 선택·실행·종합 | FastAPI + LangChain AgentExecutor |
-| **FR-07** | **세그먼트 기반 개인화** | 사용자 세그먼트에 따라 검색 메타데이터 필터와 시스템 프롬프트를 동시 분기 | FastAPI Agent |
-| **FR-08** | **인사이트 스트리밍** | Agent 추론 과정 및 최종 답변을 SSE 스트리밍으로 실시간 전달 | FastAPI → Next.js → Client |
-| **FR-09** | **이력 저장 및 조회** | 인사이트 요청·답변·출처를 Supabase에 저장, 날짜별 이력 페이지 제공 | Supabase + Next.js |
+| 요구사항 ID | 기능명 | 설명 | 담당 시스템 | 상태 |
+|---|---|---|---|---|
+| **FR-01** | **사용자 프로필 관리** | 투자 성향(A/B/C), 관심종목 watchlist 데이터 저장·관리 | Next.js + Supabase | ✅ |
+| **FR-02** | **금융 데이터 파이프라인** | 매일 장 마감 후(16:30 KST) 뉴스·공시 자동 수집·벡터화·ChromaDB 적재 | Python + GitHub Actions | ✅ |
+| **FR-03** | **데이터 정제 및 벡터화** | 수집 텍스트 청킹·임베딩, 메타데이터 부착 후 ChromaDB upsert | Python + LangChain | ✅ |
+| **FR-04** | **실시간 가격 연동** | Yahoo Finance API로 관심종목 실시간 종가·등락률, 시장 요약 제공 | Next.js (lib/yahoo.ts) | ✅ |
+| **FR-05** | **가격 이상 감지** | 최근 20일 Z-score 산출 → 이상 감지 시 자동 인사이트 트리거 | FastAPI (price_anomaly_tool) | ✅ |
+| **FR-06** | **Multi-tool AI 에이전트** | Agent가 질문 유형 판단 → 필요한 도구를 선택·실행·종합 | FastAPI + LangChain AgentExecutor | ✅ |
+| **FR-07** | **세그먼트 기반 개인화** | 사용자 세그먼트에 따라 검색 필터와 시스템 프롬프트를 동시 분기 | FastAPI Agent | ✅ |
+| **FR-08** | **인사이트 스트리밍** | Agent 답변을 SSE 스트리밍으로 실시간 전달 | FastAPI → Next.js → Client | ✅ |
+| **FR-09** | **이력 저장 및 조회** | 인사이트 요청·답변·출처를 Supabase에 저장, 날짜별 이력 제공 | Supabase + Next.js | ✅ |
+| **FR-10** | **재무 데이터 통합** | 분기별 PER·PBR·ROE·매출·영업이익 Supabase 적재, `get_financials_tool` 연동 | DART API + Supabase | 🔲 |
+| **FR-11** | **모닝 브리프 자동 발송** | 매일 08:00 KST 관심종목 AI 인사이트 자동 생성 → 인앱 알림·Web Push | AWS Lambda + EventBridge | 🔲 |
 
 ---
 
@@ -52,6 +55,7 @@
 |---|---|---|
 | **응답 시간** | AI 인사이트 응답 P95 < 5초 | SSE 스트리밍으로 체감 지연 최소화 |
 | **데이터 신선도** | 매일 16:30 이전 ChromaDB 업데이트 완료 | 파이프라인 실패 시 전날 데이터로 폴백 |
+| **모닝 브리프 발송** | 매 평일 08:00 KST ± 5분 | EventBridge cron 기반 |
 | **가용성** | 파이프라인 실패 시 Slack 알림 및 자동 재시도 | GitHub Actions 최대 2회 재실행 |
 | **확장성** | 도구(Tool)·세그먼트 타입을 코드 변경 없이 추가 가능 | Config-driven Agent 구조 |
 | **보안** | API Key 및 민감 정보는 환경변수·Secret Manager 관리 | 코드베이스 하드코딩 금지 |
@@ -59,120 +63,110 @@
 
 ---
 
-### 5. 데이터 소스 및 수집 명세 (FR-02 상세)
+### 5. 데이터 소스 및 수집 명세
 
 | 데이터 유형 | 소스 | API / 라이브러리 | 수집 주기 | Agent 도구 |
 |---|---|---|---|---|
 | 국내 금융 뉴스 | 네이버 뉴스 | Naver Search API | 일 1회 (파이프라인) | search_news_tool |
 | 미국 금융 뉴스 | NewsAPI | REST API | 일 1회 (파이프라인) | search_news_tool |
-| 국내 기업 공시 | 금융감독원 DART | OpenDart REST API | 일 1회 (파이프라인) + 온디맨드 | get_dart_tool |
+| 국내 기업 공시 | 금융감독원 DART | OpenDart REST API | 일 1회 + 온디맨드 | get_dart_tool |
 | 실시간 주가·시장 | Yahoo Finance | query1.finance.yahoo.com | 온디맨드 (캐시 30~60분) | get_price_tool |
-| 국내 주가 이력 | FinanceDataReader | `fdr.DataReader()` | 일 1회 (가격 이상 감지용) | price_anomaly_tool |
+| 국내 주가 이력 | FinanceDataReader | `fdr.DataReader()` | 온디맨드 (이상 감지용) | price_anomaly_tool |
+| **분기 재무지표** | **DART 재무제표 API** | `fnlttSinglAcnt` | **분기 1회** | **get_financials_tool** |
+| **기업 개요** | **DART 기업개황 API** | `company.json` | **연 1회** | **get_financials_tool** |
 
 ---
 
 ### 6. Agent 도구 설계 (FR-06 상세)
 
-Agent는 유저 질문을 분석하여 아래 4개 도구 중 필요한 것을 선택·조합하여 실행합니다.
+Agent는 유저 질문을 분석하여 아래 5개 도구 중 필요한 것을 선택·조합하여 실행합니다.
 
 ```
-유저: "삼성전자 오늘 왜 이렇게 떨어졌어?"
+유저: "삼성전자 PBR이 낮은데 지금 저평가인가요?" (C형 — 가치투자형)
 
 Agent 판단:
-  1. get_price_tool("005930")       → 오늘 -2.8% 확인, Z-score 3.1 (이상)
-  2. search_news_tool("삼성전자")   → 관련 뉴스 Top-5 청크 검색
-  3. get_dart_tool("005930")        → 최근 30일 주요 공시 확인
+  1. get_financials_tool("005930")  → PER 12.3, PBR 1.1, ROE 8.2% (Supabase)
+  2. search_news_tool("삼성전자")   → 관련 뉴스 Top-5 (ChromaDB RAG)
+  3. get_dart_tool("삼성전자")      → 최근 분기 실적 공시 확인
 
-→ 세 결과를 세그먼트 B형 관점으로 종합하여 답변 생성
+→ 세 결과를 C형 관점(펀더멘털 분석)으로 종합하여 답변 생성
 ```
 
 | 도구명 | 입력 | 출처 | 설명 |
 |---|---|---|---|
-| `search_news_tool` | 키워드, market, category | ChromaDB (RAG) | 뉴스·공시 벡터 검색, 세그먼트별 메타데이터 필터 적용 |
-| `get_dart_tool` | 종목코드 | DART OpenAPI | 최근 30일 공시 목록 조회 및 핵심 내용 요약 |
-| `get_price_tool` | ticker, market | Yahoo Finance | 현재 종가·등락률·거래량 조회 |
-| `price_anomaly_tool` | ticker, market | FinanceDataReader + 통계 | 최근 20일 기준 Z-score 산출, 이상 여부 판정 |
+| `search_news_tool` | 키워드, market | ChromaDB (RAG) | 뉴스·공시 벡터 검색 |
+| `get_dart_tool` | 기업명 | DART OpenAPI | 최근 30일 공시 목록 조회 |
+| `get_price_tool` | ticker | Yahoo Finance | 현재 종가·등락률 조회 |
+| `price_anomaly_tool` | ticker | FinanceDataReader + 통계 | Z-score 이상 감지 |
+| `get_financials_tool` | ticker | Supabase financial_metrics | PER, PBR, ROE, 매출, 영업이익 조회 |
 
 ---
 
-### 7. 데이터 구조 및 Vector DB 스키마 (FR-03 상세)
+### 7. 재무 데이터 설계 (FR-10 상세)
 
-수집된 비정형 텍스트는 아래 구조로 청킹·메타데이터 부착 후 ChromaDB에 적재합니다.
+**Supabase 스키마:**
+```sql
+-- 분기별 재무지표
+create table financial_metrics (
+  id         uuid primary key default gen_random_uuid(),
+  ticker     text not null,
+  period     text not null,   -- "2024Q4", "2025Q1"
+  per        float,
+  pbr        float,
+  roe        float,
+  eps        float,
+  revenue    bigint,
+  op_income  bigint,
+  net_income bigint,
+  updated_at timestamptz default now(),
+  unique (ticker, period)
+);
 
-```json
-{
-  "document": "삼성전자, 2분기 영업이익 10조 돌파... HBM 수요 급증에 반도체 부문 흑자 전환",
-  "metadata": {
-    "source": "naver_news | dart | newsapi",
-    "published_at": "2025-03-10T14:30:00",
-    "collected_at": "2025-03-10T16:35:00",
-    "market": "KOR | US",
-    "related_tickers": ["005930", "000660"],
-    "category": "semiconductor | macro | energy | bio_pharma",
-    "sentiment": "positive | negative | neutral"
-  }
-}
+-- 기업 개요 (연 1회 갱신)
+create table company_profiles (
+  ticker      text primary key,
+  name        text not null,
+  market      text not null,  -- "KOR" | "US"
+  sector      text,
+  industry    text,
+  description text,
+  updated_at  timestamptz default now()
+);
 ```
 
-**청킹 전략:**
-- 뉴스 1건당 최대 500 토큰 분할, 50 토큰 오버랩
-- 공시 데이터는 섹션(사업 개요·재무 현황·주요 사항) 기준 분할
-- 청크 경계는 문장 단위로 처리하여 의미 단절 방지
+**RAG 이중 활용:**
+- Supabase: 구조화 조회 (`get_financials_tool` 온디맨드)
+- ChromaDB: 재무 요약 텍스트 청크화 → 시맨틱 검색 컨텍스트로도 활용
 
 ---
 
-### 8. 시스템 아키텍처
+### 8. 모닝 브리프 설계 (FR-11 상세)
 
-**Frontend & BFF (Next.js / Vercel)**
-- 사용자 인증(Supabase Auth), 관심종목 관리, 실시간 가격 표시, Agent API 프록시
+```
+매일 08:00 KST (UTC 23:00) — EventBridge → Lambda (Python)
+  ① Supabase watchlist → 유저별 관심종목 조회
+  ② 종목별 전날 뉴스 + 재무 요약 수집
+  ③ FastAPI /api/ai/insight 호출 → 세그먼트별 인사이트 생성
+  ④ Supabase notifications 테이블 저장
+  ⑤ Web Push API (VAPID) → 브라우저 알림 전송
+```
 
-**AI & Data Backend (FastAPI / EC2)**
-- LangChain AgentExecutor 기반 Multi-tool 에이전트
-- 도구 선택 → 실행 → 결과 종합 → 세그먼트 프롬프트 적용 → SSE 스트리밍
-
-**Data Pipeline (GitHub Actions)**
-- 평일 16:30 KST 자동 실행: 수집 → 정제 → 임베딩 → ChromaDB 적재
-- 실패 시 Slack 알림 + 최대 2회 재시도
-
----
-
-### 9. 주요 API 연계 흐름 (Multi-tool Agent Sequence)
-
-1. **Client:** `/insight/005930` 페이지에서 "삼성전자 오늘 왜 떨어졌어?" 요청
-2. **Next.js API Route (`/api/insight`):** Supabase에서 사용자 세그먼트 `B` (위험감수형) 조회
-3. **Next.js → FastAPI:** `POST /api/ai/insight/stream` 호출
-   ```json
-   { "user_segment": "B", "ticker": "005930", "query": "삼성전자 오늘 왜 이렇게 떨어졌어?" }
-   ```
-4. **FastAPI Agent:**
-   - `get_price_tool` → 오늘 -2.8%, Z-score 3.1 (이상 감지)
-   - `search_news_tool` → 관련 뉴스 Top-5 검색 (category=semiconductor 필터)
-   - `get_dart_tool` → 최근 공시 확인
-5. **FastAPI → LLM:** B형 시스템 프롬프트 + 3개 도구 결과 컨텍스트 → 인사이트 생성
-6. **FastAPI → Next.js → Client:** SSE 스트리밍 전달
-7. **Next.js:** `insight_history` 테이블에 이력 저장 (도구별 출처 포함)
+**배치 처리 전략:**
+- 동시 요청 제한: 최대 5개 병렬 (Rate limit 방지)
+- 실패 시: 해당 종목 건너뛰고 계속 진행 (부분 성공 허용)
+- Lambda timeout: 5분 (일반적인 watchlist 규모에서 충분)
+- 스케줄러 위치: Lambda (상시 구동 불필요) ← EC2 APScheduler 대비 비용 효율
 
 ---
 
-### 10. AI 에이전트 품질 평가 기준
+### 9. 구현 로드맵 (마일스톤)
 
-단순 구현을 넘어 에이전트 답변 품질을 측정하고 개선하기 위한 평가 지표를 정의합니다.
-
-| 평가 항목 | 측정 방법 | 목표 기준 |
-|---|---|---|
-| **Retrieval 품질** | 질의 관련 청크가 Top-5 내 포함되는 비율 (Recall@5) | ≥ 80% |
-| **도구 선택 정확도** | 질문 유형별 적절한 도구가 호출되는 비율 (수동 평가 30건) | ≥ 85% |
-| **세그먼트 적합성** | A/B/C 답변이 실제로 상이한지 정성 평가 (샘플 10건) | 평가자 일치율 ≥ 70% |
-| **환각(Hallucination) 비율** | 검색된 청크에 없는 정보를 답변에 포함하는 비율 | ≤ 10% |
-| **응답 완결성** | 핵심 포인트(시황 요약·리스크·관련 종목)를 모두 포함하는 비율 | ≥ 90% |
-
----
-
-### 11. 구현 로드맵 (마일스톤)
-
-| Phase | 목표 | 주요 산출물 |
-|---|---|---|
-| **Phase 1** | 데이터 파이프라인 구축 | 뉴스·공시 수집 → 벡터화 자동화, ChromaDB 적재 확인 |
-| **Phase 2** | Multi-tool AI 에이전트 구현 | AgentExecutor + 4개 도구, 세그먼트 분기, 스트리밍 |
-| **Phase 3** | Next.js + Supabase 프론트엔드 | 인증·watchlist·실시간 가격·인사이트 UI, Vercel 배포 |
-| **Phase 4** | 품질 평가 및 최적화 | Recall@5·도구 선택 정확도 측정, 파라미터 튜닝, 최종 문서화 |
+| Phase | 목표 | 주요 산출물 | 상태 |
+|---|---|---|---|
+| **Phase 1** | 데이터 파이프라인 구축 | 뉴스·공시 수집 → 벡터화 자동화 | ✅ 완료 |
+| **Phase 2** | Multi-tool AI 에이전트 | AgentExecutor + 4개 도구, 세그먼트 분기, 스트리밍 | ✅ 완료 |
+| **Phase 3** | Next.js + Supabase 프론트엔드 | 인증·watchlist·실시간 가격·인사이트 UI | ✅ 완료 |
+| **Phase 4** | EC2 + Vercel 배포 | FastAPI EC2 배포, Next.js Vercel 배포, E2E 검증 | 🔲 진행 예정 |
+| **Phase 5** | 재무 데이터 통합 | DART 재무지표, get_financials_tool, Supabase 적재 | 🔲 진행 예정 |
+| **Phase 6** | 모닝 브리프 | Lambda + EventBridge, notifications UI, Web Push | 🔲 진행 예정 |
+| **Phase 7** | 품질 평가 및 최적화 | Recall@5, 도구 선택 정확도, 포트폴리오 문서화 | 🔲 진행 예정 |

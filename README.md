@@ -2,7 +2,7 @@
 
 > 고객 세그먼트 기반 맞춤형 투자 인사이트 AI 에이전트
 
-뉴스·공시·실시간 가격 데이터를 **Multi-tool LangChain Agent**로 연계하여, 사용자의 투자 성향(안전추구형·위험감수형·가치투자형)에 따라 검색 전략과 답변 관점을 동시에 분기하는 개인화 투자 인사이트 웹 서비스.
+뉴스·공시·실시간 가격·재무 데이터를 **Multi-tool LangChain Agent**로 연계하여, 사용자의 투자 성향(안전추구형·위험감수형·가치투자형)에 따라 검색 전략과 답변 관점을 동시에 분기하는 개인화 투자 인사이트 웹 서비스.
 
 ---
 
@@ -17,7 +17,7 @@ FinSight Agent는 세 가지 측면에서 이를 넘어섭니다.
 유저: "삼성전자 오늘 왜 이렇게 떨어졌어?"
 
 Agent 판단:
-  1. price_anomaly_tool  → Z-score 3.1 (이상 감지)
+  1. price_anomaly_tool  → Z-score 3.1 (통계적 이상 감지)
   2. search_news_tool    → 관련 뉴스 Top-5 (ChromaDB RAG)
   3. get_dart_tool       → 최근 30일 공시 확인
 
@@ -32,6 +32,7 @@ Agent 판단:
 | `get_dart_tool` | 금융감독원 DART API | 기업 공시 직접 조회 |
 | `get_price_tool` | Yahoo Finance API | 실시간 종가·등락률 |
 | `price_anomaly_tool` | FinanceDataReader + 통계 | Z-score 기반 이상 감지 |
+| `get_financials_tool` | Supabase (DART 재무제표) | PER, PBR, ROE, 매출, 영업이익 |
 
 ### 2. 세그먼트 기반 이중 분기 — 검색 전략 + 프롬프트 동시 분기
 
@@ -41,11 +42,15 @@ Agent 판단:
 |---|---|---|
 | A형 (안전추구) | 리스크·배당 카테고리 우선 필터 | 보수적, 리스크 강조 |
 | B형 (위험감수) | 가격 이상·모멘텀 섹터 우선 필터 | 공격적, 기회 강조 |
-| C형 (가치투자) | 공시·실적 문서 우선 필터 | 분석적, 펀더멘털 중심 |
+| C형 (가치투자) | 공시·실적·재무 문서 우선 필터 | 분석적, 펀더멘털 중심 |
 
 ### 3. 가격 이상 감지 — 데이터 기반 트리거
 
 최근 20일 표준편차 기반 Z-score를 산출하여 **통계적으로 비정상적인 가격 변동을 자동 감지**하고, 그 원인을 뉴스·공시 데이터로 설명합니다.
+
+### 4. 모닝 브리프 — 장 시작 전 자동 인사이트 발송
+
+매일 08:00 KST, AWS Lambda가 관심종목에 대한 인사이트를 자동 생성하여 인앱 알림으로 전달합니다. 사용자가 앱을 열기 전에 오늘의 투자 정보가 준비되어 있습니다.
 
 ---
 
@@ -56,45 +61,47 @@ flowchart TD
     Client["Client (Browser)"]
 
     subgraph Vercel["Frontend & BFF — Next.js (Vercel)"]
-        NX["Next.js 14 App Router\n인증 · watchlist · 가격 UI"]
-        APIRoute["/api/insight\nSSE 프록시"]
+        NX["Next.js 14 App Router\n인증 · watchlist · 가격 UI · 알림"]
+        APIRoute["/api/insight — SSE 프록시"]
     end
 
     subgraph Supabase["Supabase Cloud"]
         SA["Auth"]
-        SDB["PostgreSQL\nprofiles · watchlist · insight_history"]
+        SDB["PostgreSQL\nprofiles · watchlist · insight_history\nfinancial_metrics · notifications"]
     end
 
-    subgraph EC2["AWS EC2 — Docker Compose"]
+    subgraph EC2["AWS EC2 t3.micro — Docker Compose"]
         FA["FastAPI :8000\nLangChain AgentExecutor"]
-        subgraph Tools["Agent Tools"]
+        subgraph Tools["Agent Tools (5개)"]
             T1["search_news_tool"]
             T2["get_dart_tool"]
             T3["get_price_tool"]
             T4["price_anomaly_tool"]
+            T5["get_financials_tool"]
         end
         Chroma["ChromaDB :8001"]
-        FA --> T1 & T2 & T3 & T4
-        T1 --> Chroma
     end
 
-    subgraph External["External APIs"]
-        OpenAI["OpenAI GPT-4o-mini\n+ text-embedding-3-small"]
-        DART["금융감독원 DART"]
-        Yahoo["Yahoo Finance"]
+    subgraph Lambda["AWS Lambda + EventBridge"]
+        EB["EventBridge\n08:00 KST 평일"]
+        LF["Lambda\n모닝 브리프 배치"]
+        EB --> LF
     end
 
-    subgraph Pipeline["GitHub Actions (매일 16:30 KST)"]
-        GHA["뉴스·공시 수집 → 정제 → 임베딩 → ChromaDB 적재"]
+    subgraph Pipeline["GitHub Actions"]
+        P1["뉴스 파이프라인\n평일 16:30 KST"]
+        P2["재무 파이프라인\n분기 1회"]
     end
 
     Client --> NX
-    NX --> SA & SDB & Yahoo
-    NX --> APIRoute --> FA
-    FA --> OpenAI
-    T2 --> DART
-    T3 & T4 --> Yahoo
-    GHA --> Chroma
+    NX --> SA & SDB & APIRoute
+    APIRoute --> FA
+    FA --> T1 & T2 & T3 & T4 & T5
+    T1 --> Chroma
+    T5 --> SDB
+    LF --> SDB & FA
+    P1 --> Chroma
+    P2 --> SDB
 ```
 
 ---
@@ -107,9 +114,11 @@ flowchart TD
 | 인증 / DB | Supabase Auth · Supabase PostgreSQL · RLS |
 | AI Backend | Python 3.11 · FastAPI · LangChain AgentExecutor · ChromaDB |
 | LLM / Embedding | OpenAI GPT-4o-mini · text-embedding-3-small |
-| 실시간 가격 | Yahoo Finance API (lib/yahoo.ts, next.revalidate 캐시) |
-| Pipeline | GitHub Actions · OpenDart API · Naver Search API · NewsAPI |
-| Infra | AWS EC2 · Docker Compose |
+| 실시간 가격 | Yahoo Finance API |
+| Pipeline (뉴스) | GitHub Actions · Naver Search API · NewsAPI · OpenDart API |
+| Pipeline (재무) | GitHub Actions · DART 재무제표 API · Supabase |
+| 모닝 브리프 | AWS Lambda · EventBridge |
+| Infra | AWS EC2 t3.micro · Docker Compose |
 
 ---
 
@@ -120,17 +129,20 @@ finsight-ai-agent/
 ├── frontend/               # Next.js 14 프론트엔드 + API Route
 │   ├── app/
 │   │   ├── (auth)/         # 로그인·온보딩
-│   │   ├── (main)/         # 홈·검색·인사이트·이력·설정
+│   │   ├── (main)/         # 홈·검색·인사이트·이력·설정·알림
 │   │   └── api/            # /api/insight (SSE 프록시)
+│   ├── components/         # AnomalyBadge 등 재사용 컴포넌트
 │   └── lib/
 │       ├── supabase/       # 브라우저·서버 클라이언트
 │       └── yahoo.ts        # 실시간 가격·시장 요약
 ├── ai-server/              # FastAPI AI 에이전트 서버
 │   └── app/
 │       ├── api/            # FastAPI 라우터
-│       ├── agent/          # LangChain AgentExecutor + Tools
+│       ├── agent/          # LangChain AgentExecutor + 5개 Tools
 │       ├── pipeline/       # 데이터 수집·정제·벡터화
 │       └── core/           # 설정·공통 유틸
+├── lambda/                 # 모닝 브리프 Lambda 함수
+│   └── morning_brief/
 ├── docker/                 # Dockerfile 모음
 ├── docs/                   # PRD · TECH_STACK · TASK · DEPLOYMENT
 └── docker-compose.yml
@@ -142,8 +154,7 @@ finsight-ai-agent/
 
 ### 사전 준비
 
-- Node.js 20+
-- Docker / Docker Compose
+- Node.js 20+, Docker / Docker Compose
 - Python 3.11+, Poetry
 
 ```bash
@@ -159,8 +170,8 @@ git clone https://github.com/sammy0329/finsight-ai-agent.git
 cd finsight-ai-agent
 
 # 환경변수 설정
-cp .env.example .env          # .env 값 채우기
-cp frontend/.env.local.example frontend/.env.local  # Supabase, FastAPI URL 입력
+cp .env.example .env                              # FastAPI용 .env 작성
+cp frontend/.env.local.example frontend/.env.local  # Next.js 환경변수 작성
 
 # Python 의존성 설치
 cd ai-server && poetry install && cd ..
@@ -206,6 +217,20 @@ CHROMA_HOST=localhost CHROMA_PORT=8001 \
 
 ---
 
+## 구현 로드맵
+
+| Phase | 목표 | 상태 |
+|---|---|---|
+| Phase 1 | 데이터 파이프라인 (뉴스·공시 수집 → ChromaDB) | ✅ 완료 |
+| Phase 2 | Multi-tool AI 에이전트 (AgentExecutor + 4개 도구) | ✅ 완료 |
+| Phase 3 | Next.js + Supabase 프론트엔드 | ✅ 완료 |
+| Phase 4 | EC2 + Vercel 배포 | 🔲 진행 예정 |
+| Phase 5 | 재무 데이터 통합 (DART PER/PBR/ROE + get_financials_tool) | 🔲 진행 예정 |
+| Phase 6 | 모닝 브리프 (Lambda + EventBridge + Web Push) | 🔲 진행 예정 |
+| Phase 7 | 품질 평가 및 포트폴리오 문서화 | 🔲 진행 예정 |
+
+---
+
 ## 문서
 
 | 문서 | 설명 |
@@ -213,7 +238,7 @@ CHROMA_HOST=localhost CHROMA_PORT=8001 \
 | [PRD.md](./docs/PRD.md) | 제품 요구사항 정의서 — 기능·비기능 요구사항, Agent 도구 설계 |
 | [TECH_STACK.md](./docs/TECH_STACK.md) | 기술 스택 명세 — 아키텍처 다이어그램, 시퀀스, 기술 선택 근거 |
 | [TASK.md](./docs/TASK.md) | Phase/Epic/Task 단위 작업 명세 및 진행 상태 |
-| [DEPLOYMENT.md](./docs/DEPLOYMENT.md) | 배포 전략 및 인프라 구성 |
+| [DEPLOYMENT.md](./docs/DEPLOYMENT.md) | 배포 전략 및 인프라 구성 (EC2, Vercel, Lambda) |
 
 ---
 
