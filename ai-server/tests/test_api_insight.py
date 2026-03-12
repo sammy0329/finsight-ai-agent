@@ -181,30 +181,24 @@ class TestInsightWithRagChain:
         assert data["sources"] == []
 
 
-# ── T-213: /api/ai/insight/stream 스트리밍 엔드포인트 ──────────────
+# ── T-213 / T-225: /api/ai/insight/stream 스트리밍 엔드포인트 ──────
+# 내부 구현이 AgentExecutor로 교체되었으므로 agent 모듈을 mock 한다.
 
 
 class TestInsightStream:
     """POST /api/ai/insight/stream 스트리밍 엔드포인트 테스트."""
 
-    @patch("app.api.router.get_retriever")
-    @patch("app.api.router.build_rag_chain")
-    def test_stream_returns_200(self, mock_build_chain, mock_get_retriever, client):
+    @patch("app.api.router.astream_agent")
+    @patch("app.api.router.create_agent_executor")
+    def test_stream_returns_200(self, mock_create_executor, mock_astream, client):
         """스트리밍 엔드포인트가 200을 반환한다."""
-        mock_retriever = MagicMock()
-        mock_get_retriever.return_value = mock_retriever
-        mock_retriever.invoke.return_value = [
-            Document(page_content="뉴스", metadata={"source": "https://a.com"}),
-        ]
+        mock_create_executor.return_value = MagicMock()
 
-        mock_chain = MagicMock()
-
-        async def mock_astream(query):
+        async def mock_gen(executor, query):
             for token in ["안녕", "하세요"]:
                 yield token
 
-        mock_chain.astream = mock_astream
-        mock_build_chain.return_value = mock_chain
+        mock_astream.side_effect = mock_gen
 
         resp = client.post(
             "/api/ai/insight/stream",
@@ -213,26 +207,16 @@ class TestInsightStream:
         )
         assert resp.status_code == 200
 
-    @patch("app.api.router.get_retriever")
-    @patch("app.api.router.build_rag_chain")
-    def test_stream_content_type_is_event_stream(
-        self, mock_build_chain, mock_get_retriever, client
-    ):
+    @patch("app.api.router.astream_agent")
+    @patch("app.api.router.create_agent_executor")
+    def test_stream_content_type_is_event_stream(self, mock_create_executor, mock_astream, client):
         """스트리밍 응답의 content-type이 text/event-stream이다."""
-        mock_retriever = MagicMock()
-        mock_get_retriever.return_value = mock_retriever
-        mock_retriever.invoke.return_value = [
-            Document(page_content="뉴스", metadata={"source": "https://a.com"}),
-        ]
+        mock_create_executor.return_value = MagicMock()
 
-        mock_chain = MagicMock()
+        async def mock_gen(executor, query):
+            yield "토큰1"
 
-        async def mock_astream(query):
-            for token in ["토큰1"]:
-                yield token
-
-        mock_chain.astream = mock_astream
-        mock_build_chain.return_value = mock_chain
+        mock_astream.side_effect = mock_gen
 
         resp = client.post(
             "/api/ai/insight/stream",
@@ -241,24 +225,17 @@ class TestInsightStream:
         )
         assert "text/event-stream" in resp.headers.get("content-type", "")
 
-    @patch("app.api.router.get_retriever")
-    @patch("app.api.router.build_rag_chain")
-    def test_stream_contains_tokens(self, mock_build_chain, mock_get_retriever, client):
+    @patch("app.api.router.astream_agent")
+    @patch("app.api.router.create_agent_executor")
+    def test_stream_contains_tokens(self, mock_create_executor, mock_astream, client):
         """스트리밍 응답에 토큰이 포함된다."""
-        mock_retriever = MagicMock()
-        mock_get_retriever.return_value = mock_retriever
-        mock_retriever.invoke.return_value = [
-            Document(page_content="뉴스", metadata={}),
-        ]
+        mock_create_executor.return_value = MagicMock()
 
-        mock_chain = MagicMock()
-
-        async def mock_astream(query):
+        async def mock_gen(executor, query):
             for token in ["삼성", "전자", " 전망"]:
                 yield token
 
-        mock_chain.astream = mock_astream
-        mock_build_chain.return_value = mock_chain
+        mock_astream.side_effect = mock_gen
 
         resp = client.post(
             "/api/ai/insight/stream",
@@ -268,25 +245,6 @@ class TestInsightStream:
         body = resp.text
         assert "삼성" in body
         assert "전자" in body
-
-    @patch("app.api.router.get_retriever")
-    @patch("app.api.router.build_rag_chain")
-    def test_stream_fallback_when_no_docs(self, mock_build_chain, mock_get_retriever, client):
-        """스트리밍에서 검색 결과 없으면 폴백 메시지를 스트리밍한다."""
-        mock_retriever = MagicMock()
-        mock_get_retriever.return_value = mock_retriever
-        mock_retriever.invoke.return_value = []
-
-        mock_chain = MagicMock()
-        mock_build_chain.return_value = mock_chain
-
-        resp = client.post(
-            "/api/ai/insight/stream",
-            json={"user_segment": "A", "query": "test"},
-            headers={"X-Internal-Key": VALID_KEY},
-        )
-        assert resp.status_code == 200
-        assert "현재 관련 금융 데이터가 없습니다" in resp.text
 
     def test_stream_no_auth_returns_401(self, client):
         """스트리밍 엔드포인트도 인증이 필요하다."""

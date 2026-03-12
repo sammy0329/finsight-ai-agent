@@ -6,7 +6,7 @@
 - C형 (가치투자형): 분석적, 장기 관점, 펀더멘털/실적/밸류에이션 중심
 """
 
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 # T-206: 안전추구형 (A형) 시스템 프롬프트
 _SEGMENT_A_PROMPT = (
@@ -69,5 +69,50 @@ def get_prompt_for_segment(segment: str) -> ChatPromptTemplate:
         [
             ("system", system_prompt),
             ("human", HUMAN_TEMPLATE),
+        ]
+    )
+
+
+# ── T-224: Agent 전용 세그먼트별 프롬프트 ────────────────────────────
+
+_AGENT_TOOL_INSTRUCTION = (
+    "\n\n당신은 다음 도구를 활용할 수 있습니다:\n"
+    "1. search_news_tool: 관련 금융 뉴스 검색\n"
+    "2. get_dart_tool: DART 공시 목록 조회\n"
+    "3. get_price_tool: Yahoo Finance 실시간 가격 조회\n"
+    "4. price_anomaly_tool: 가격 이상(Z-score) 감지\n\n"
+    "질문에 답변하기 위해 필요한 도구를 적절히 선택하여 사용하세요.\n"
+    "도구 결과를 종합하여 세그먼트에 맞는 투자 인사이트를 제공하세요."
+)
+
+AGENT_HUMAN_TEMPLATE = "{input}"
+
+
+def get_agent_prompt_for_segment(segment: str) -> ChatPromptTemplate:
+    """세그먼트 코드(A/B/C)에 맞는 Agent용 ChatPromptTemplate을 반환한다.
+
+    기존 세그먼트 프롬프트에 도구 사용 지침을 추가하고,
+    agent_scratchpad를 포함하는 Agent 전용 프롬프트를 생성한다.
+
+    Args:
+        segment: 투자 성향 세그먼트 코드. "A", "B", "C".
+
+    Returns:
+        Agent 실행에 필요한 ChatPromptTemplate (input, agent_scratchpad 포함).
+
+    Raises:
+        ValueError: 알 수 없는 세그먼트 코드가 입력된 경우.
+    """
+    system_prompt = SEGMENT_SYSTEM_PROMPTS.get(segment)
+    if not system_prompt:
+        raise ValueError(f"Unknown segment: {segment!r}. Must be one of: A, B, C")
+
+    full_system = system_prompt + _AGENT_TOOL_INSTRUCTION
+
+    return ChatPromptTemplate.from_messages(
+        [
+            ("system", full_system),
+            ("human", AGENT_HUMAN_TEMPLATE),
+            MessagesPlaceholder(variable_name="agent_scratchpad"),
         ]
     )

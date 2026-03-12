@@ -1,9 +1,10 @@
-"""T-201, T-212, T-213: FastAPI 라우터 정의 및 RAG 체인 연결."""
+"""T-201, T-212, T-213, T-225: FastAPI 라우터 정의 및 RAG 체인/Agent 연결."""
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
-from app.agent.chain import FALLBACK_MESSAGE, build_rag_chain, invoke_with_fallback
+from app.agent.chain import build_rag_chain, invoke_with_fallback
+from app.agent.executor import astream_agent, create_agent_executor
 from app.agent.retriever import get_retriever
 from app.api.schemas import InsightRequest, InsightResponse
 from app.core.config import settings
@@ -51,7 +52,7 @@ async def get_insight_stream(
     req: InsightRequest,
     _: str = Depends(verify_internal_key),
 ):
-    """StreamingResponse로 LLM 응답을 스트리밍한다.
+    """StreamingResponse로 AgentExecutor 응답을 스트리밍한다.
 
     Args:
         req: 인사이트 요청 (user_segment, query).
@@ -59,25 +60,15 @@ async def get_insight_stream(
     Returns:
         StreamingResponse: text/event-stream 형식의 스트리밍 응답.
     """
-    retriever = get_retriever(
+    executor = create_agent_executor(
+        segment=req.user_segment,
+        openai_api_key=settings.openai_api_key,
         chroma_host=settings.chroma_host,
         chroma_port=settings.chroma_port,
-        market=_market_for_segment(req.user_segment),
     )
 
-    # 폴백 처리: 검색 결과 없으면 폴백 메시지 스트리밍
-    docs = retriever.invoke(req.query)
-    if not docs:
-
-        async def fallback_generate():
-            yield FALLBACK_MESSAGE
-
-        return StreamingResponse(fallback_generate(), media_type="text/event-stream")
-
-    chain = build_rag_chain(req.user_segment, retriever, settings.openai_api_key)
-
     async def generate():
-        async for token in chain.astream(req.query):
+        async for token in astream_agent(executor, req.query):
             yield token
 
     return StreamingResponse(generate(), media_type="text/event-stream")

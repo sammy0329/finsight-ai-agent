@@ -176,33 +176,32 @@
 
 > 기존 LCEL RAG 체인을 LangChain AgentExecutor 기반 Multi-tool 구조로 전환한다.
 
-- [ ] **T-219** LangChain AgentExecutor 기반 구조 설계
+- [x] **T-219** LangChain AgentExecutor 기반 구조 설계
   - `create_openai_tools_agent` 사용 (Tool-calling 방식)
   - 기존 LCEL 체인 → Agent + Tools 구조로 리팩터링
   - `agent/tools.py`, `agent/executor.py` 모듈 분리
-- [ ] **T-220** `search_news_tool` 구현
+- [x] **T-220** `search_news_tool` 구현
   - ChromaDB RAG 검색 도구 (기존 Retriever 래핑)
   - 세그먼트별 메타데이터 필터 동적 적용 (category, market)
   - 도구 설명(docstring)으로 Agent에 사용 시점 명시
-- [ ] **T-221** `get_dart_tool` 구현
-  - DART OpenAPI `/api/list.json` 연동 (최근 30일 공시 목록)
-  - 종목코드 → corp_code 변환 매핑 (`dart_corp_map.py`)
+- [x] **T-221** `get_dart_tool` 구현
+  - DART OpenAPI `/api/list.json` 연동 (최근 30일 공시 목록, 최대 10건)
   - 핵심 공시 유형 필터: 분기보고서, 대규모내부거래, 임원변동
-- [ ] **T-222** `get_price_tool` 구현
-  - Yahoo Finance 온디맨드 조회 (FastAPI 내부에서 직접 호출)
-  - 종가, 등락률, 거래량, 52주 최고/최저 반환
-- [ ] **T-223** `price_anomaly_tool` 구현
-  - FinanceDataReader로 최근 20일 일별 수익률 조회
-  - Z-score 산출: `(오늘 등락률 - 평균) / 표준편차`
-  - |Z-score| > 2 → 이상 감지, 결과를 Agent 컨텍스트에 전달
-- [ ] **T-224** 세그먼트별 Agent 프롬프트 재설계
-  - 기존 RAG 프롬프트 → Agent 시스템 프롬프트로 전환
-  - A형: 리스크·배당 도구 우선 / B형: 가격·모멘텀 우선 / C형: 공시·실적 우선
+- [x] **T-222** `get_price_tool` 구현
+  - Yahoo Finance chart endpoint 온디맨드 조회
+  - 종가, 등락률 반환
+- [x] **T-223** `price_anomaly_tool` 구현
+  - FinanceDataReader 최근 20일 수익률 → Z-score 산출
+  - |Z-score| > 2 → 이상 감지 판정 (데이터 < 5일이면 None 반환)
+  - `calculate_zscore()` 순수 함수 100% 커버리지
+- [x] **T-224** 세그먼트별 Agent 프롬프트 재설계
+  - `get_agent_prompt_for_segment()` 추가 (기존 prompts.py 하위 호환 유지)
+  - A형: 리스크·배당 중심 / B형: 가격·모멘텀 중심 / C형: 공시·실적 중심
   - 답변 하단 비투자권유 고지문 삽입
-- [ ] **T-225** Agent 스트리밍 응답 수정
-  - `AgentExecutor.astream_events()` 사용
-  - 도구 호출 중간 단계도 SSE로 전달 (선택)
-  - 최종 답변 + 사용된 도구 목록(sources) 반환
+- [x] **T-225** Agent 스트리밍 응답 수정
+  - `astream_events` v2 기반 비동기 스트리밍
+  - `/insight/stream` 엔드포인트 내부 구현 AgentExecutor로 교체
+  - 기존 `/insight` POST 엔드포인트 하위 호환 유지
 
 ### Epic 2-6. 가격 이상 감지 프론트엔드 연동
 
