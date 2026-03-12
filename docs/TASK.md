@@ -234,11 +234,11 @@
 
 ### Epic 6-0. 데이터 파이프라인 보완 (파이프라인 갭 해결)
 
-- [ ] **T-601** US 파이프라인 cron 분리 (07:00 KST — `0 22 * * 1-5`)
-- [ ] **T-602** daily_prices Supabase 적재 활성화 (run_pipeline.py에서 stock_collector 호출)
-- [ ] **T-603** KOSPI/KOSDAQ 지수 수집 추가 (`fdr.DataReader("KS11")`, `fdr.DataReader("KQ11")` → market_indices 테이블)
-- [ ] **T-604** USD/KRW 환율 수집 추가 (`fdr.DataReader("USD/KRW")` → fx_rates 테이블)
-- [ ] **T-605** Supabase market_indices, fx_rates 테이블 스키마 생성
+- [x] **T-601** US 파이프라인 cron 분리 (07:00 KST — `0 22 * * 1-5`)
+- [x] **T-602** daily_prices Supabase 적재 활성화 (run_pipeline.py에서 stock_collector 호출)
+- [x] **T-603** KOSPI/KOSDAQ 지수 수집 추가 (`fdr.DataReader("KS11")`, `fdr.DataReader("KQ11")` → market_indices 테이블)
+- [x] **T-604** USD/KRW 환율 수집 추가 (`fdr.DataReader("USD/KRW")` → fx_rates 테이블)
+- [x] **T-605** Supabase market_indices, fx_rates 테이블 스키마 생성
 
 ### Epic 6-1. Supabase 리포트 스키마
 
