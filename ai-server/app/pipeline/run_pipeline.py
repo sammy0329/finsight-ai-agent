@@ -1,6 +1,7 @@
-"""T-115: 파이프라인 통합 실행 스크립트.
+"""T-115 / T-601~605: 파이프라인 통합 실행 스크립트.
 
 뉴스 수집 -> 정제 -> 메타데이터 부착 -> 청킹 -> 임베딩 -> ChromaDB upsert
++ 주가/지수/환율 수집 -> Supabase upsert
 전체 파이프라인을 실행하고 결과 통계를 반환한다.
 
 CLI 실행:
@@ -17,10 +18,17 @@ from app.pipeline.chunker import chunk_news_item
 from app.pipeline.cleaner import clean_news_items
 from app.pipeline.dedup import deduplicate_by_url
 from app.pipeline.embedder import embed_documents
+from app.pipeline.market_collector import fetch_fx_rates, fetch_market_indices
 from app.pipeline.metadata_builder import build_news_metadata
 from app.pipeline.news_collector import fetch_naver_news_multi
 from app.pipeline.newsapi_collector import fetch_us_news_multi
 from app.pipeline.query_config import KOR_QUERIES, US_QUERIES
+from app.pipeline.stock_collector import fetch_stock_data
+from app.pipeline.supabase_store import (
+    upsert_daily_prices,
+    upsert_fx_rates,
+    upsert_market_indices,
+)
 from app.pipeline.vector_store import upsert_chunks
 
 logger = logging.getLogger(__name__)
@@ -150,6 +158,9 @@ if __name__ == "__main__":
         "chroma_port": int(os.getenv("CHROMA_PORT", "8001")),
     }
 
+    supabase_url = os.getenv("SUPABASE_URL", "")
+    supabase_key = os.getenv("SUPABASE_SERVICE_KEY", "")
+
     total: dict[str, int] = {
         "collected": 0,
         "cleaned": 0,
@@ -168,6 +179,34 @@ if __name__ == "__main__":
         if result["upserted"] == 0:
             logger.warning("market=%s upsert 결과 없음", m)
             success = False
+
+    # ------------------------------------------------------------------ #
+    # T-602: 주가 데이터 Supabase 적재
+    # ------------------------------------------------------------------ #
+    tickers = config_base.get("tickers", [])
+    if tickers:
+        logger.info("주가 수집 시작 — tickers=%s", tickers)
+        prices = fetch_stock_data(tickers, run_date, run_date)
+        if prices and supabase_url:
+            cnt = upsert_daily_prices(supabase_url, supabase_key, prices)
+            logger.info("daily_prices upsert 완료 — %d건", cnt)
+
+    # ------------------------------------------------------------------ #
+    # T-603/T-604: 지수/환율 수집 + Supabase 적재
+    # ------------------------------------------------------------------ #
+    for m in markets:
+        logger.info("지수 수집 시작 — market=%s", m)
+        indices = fetch_market_indices(run_date, market=m)
+        if indices and supabase_url:
+            cnt = upsert_market_indices(supabase_url, supabase_key, indices)
+            logger.info("market_indices upsert 완료 — market=%s, %d건", m, cnt)
+
+    if "KOR" in markets:
+        logger.info("환율 수집 시작")
+        fx = fetch_fx_rates(run_date)
+        if fx and supabase_url:
+            cnt = upsert_fx_rates(supabase_url, supabase_key, fx)
+            logger.info("fx_rates upsert 완료 — %d건", cnt)
 
     logger.info("최종 통계 — %s", total)
     sys.exit(0 if success else 1)
