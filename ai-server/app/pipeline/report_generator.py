@@ -178,14 +178,19 @@ def build_payload(report_type: ReportType, config: dict) -> dict:
         tickers=tickers,
     )
 
+    openai_key = config.get("openai_api_key", "")
+
     # 6. LLM 시장 요약
     market_summary = summarize_market_news(
         news_texts=[n["text"] for n in top_news_texts[:5]],
         report_label=label,
-        openai_key=config.get("openai_api_key", ""),
+        openai_key=openai_key,
     )
 
-    # 7. payload 조립
+    # 7. 개별 뉴스 1~2문장 요약
+    summarized_news = summarize_top_news(top_news_texts[:5], openai_key=openai_key)
+
+    # 8. payload 조립
     market_section = build_market_section(indices, fx_rates)
     stocks_section = build_stocks_section(prices, sectors, anomalies, news_summaries)
 
@@ -193,7 +198,7 @@ def build_payload(report_type: ReportType, config: dict) -> dict:
         "market_summary": market_summary,
         "market": market_section,
         "stocks": stocks_section,
-        "top_news": top_news_texts[:5],
+        "top_news": summarized_news,
     }
 
 
@@ -559,6 +564,54 @@ def summarize_market_news(news_texts: list[str], report_label: str, openai_key: 
     except Exception:
         logger.warning("OpenAI 뉴스 요약 실패", exc_info=True)
         return f"{report_label}: 뉴스 요약을 일시적으로 제공하지 못했습니다."
+
+
+def summarize_top_news(news_items: list[dict], openai_key: str) -> list[dict]:
+    """뉴스 목록을 각각 1~2문장으로 LLM 요약한다.
+
+    Args:
+        news_items: {text, url} dict 리스트.
+        openai_key: OpenAI API 키.
+
+    Returns:
+        {text(요약), url} dict 리스트. 오류 시 원본 반환.
+    """
+    if not news_items or not openai_key:
+        return news_items
+
+    try:
+        client = OpenAI(api_key=openai_key)
+        numbered = "\n\n".join(f"{i + 1}. {item['text']}" for i, item in enumerate(news_items))
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "다음 뉴스 목록을 각각 1~2문장으로 핵심만 요약하세요. "
+                        "번호(1. 2. ...)를 그대로 유지하고, 각 요약은 줄바꿈으로 구분하세요. "
+                        "투자 권유 없이 객관적으로 작성하세요."
+                    ),
+                },
+                {"role": "user", "content": numbered},
+            ],
+            max_tokens=400,
+            temperature=0.2,
+        )
+        content = response.choices[0].message.content or ""
+        lines = [line.strip() for line in content.strip().split("\n") if line.strip()]
+        result = []
+        for i, item in enumerate(news_items):
+            # "1. 요약문" 형태에서 텍스트 추출
+            summary = next(
+                (line.split(".", 1)[1].strip() for line in lines if line.startswith(f"{i + 1}.")),
+                item["text"][:150],
+            )
+            result.append({"text": summary, "url": item["url"]})
+        return result
+    except Exception:
+        logger.warning("뉴스 개별 요약 실패, 원본 반환", exc_info=True)
+        return news_items
 
 
 # ── 이상 감지 (배치) ──────────────────────────────────────────────────────
