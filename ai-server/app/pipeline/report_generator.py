@@ -33,6 +33,12 @@ REPORT_CONFIG: dict[str, dict] = {
     "US_CLOSE": {"market": "US", "label": "미국 장 마감 리포트"},
 }
 
+# market 코드 → watchlist.market 컬럼 값 매핑 (프론트엔드 저장 형식)
+_MARKET_VALUES: dict[str, list[str]] = {
+    "KOR": ["KOSPI", "KOSDAQ"],
+    "US": ["NASDAQ", "NYSE", "S&P500", "NYSE Arca", "NYSE MKT"],
+}
+
 # symbol → payload key 매핑
 _INDEX_KEY_MAP: dict[str, str] = {
     "^KS11": "kospi",
@@ -259,7 +265,10 @@ def fetch_watchlist_tickers(supabase_url: str, key: str, market: str) -> list[di
     """
     try:
         client = create_client(supabase_url, key)
-        result = client.table("watchlist").select("ticker, name").eq("market", market).execute()
+        market_values = _MARKET_VALUES.get(market, [market])
+        result = (
+            client.table("watchlist").select("ticker, name").in_("market", market_values).execute()
+        )
         # 고유 ticker만 추출
         seen: set[str] = set()
         unique: list[dict] = []
@@ -354,7 +363,8 @@ def get_watchlist_user_ids(supabase_url: str, key: str, market: str) -> list[str
     """
     try:
         client = create_client(supabase_url, key)
-        result = client.table("watchlist").select("user_id").eq("market", market).execute()
+        market_values = _MARKET_VALUES.get(market, [market])
+        result = client.table("watchlist").select("user_id").in_("market", market_values).execute()
         return list({row["user_id"] for row in result.data or []})
     except Exception:
         logger.warning("watchlist user_ids 조회 실패: market=%s", market, exc_info=True)
