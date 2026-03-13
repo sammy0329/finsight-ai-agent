@@ -10,9 +10,9 @@ services:
   chromadb:
     image: chromadb/chroma:latest
     container_name: finsight-chromadb
-    # EC2 외부 노출 금지 — FastAPI에서 내부 네트워크로만 접근
-    expose:
-      - "8000"
+    # 외부 노출 금지 — EC2 로컬호스트에만 바인딩 (SSH 터널 전용)
+    ports:
+      - "127.0.0.1:8001:8000"
     volumes:
       - chroma_data:/chroma/chroma
     healthcheck:
