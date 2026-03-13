@@ -192,7 +192,7 @@ export default async function ReportDetailPage({
       {payload.top_news.length > 0 && (
         <div className="mb-8">
           <p className="px-5 py-2 text-xs font-medium" style={{ color: '#555' }}>주요 뉴스</p>
-          <TopNewsSection items={payload.top_news} />
+          <TopNewsSection items={payload.top_news} reportId={notif.id} />
         </div>
       )}
     </div>
