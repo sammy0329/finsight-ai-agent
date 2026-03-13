@@ -180,17 +180,20 @@ def build_payload(report_type: ReportType, config: dict) -> dict:
 
     openai_key = config.get("openai_api_key", "")
 
-    # 6. LLM 시장 요약
+    # 6. 종목별 뉴스 LLM 요약
+    news_summaries = summarize_stock_news(news_summaries, openai_key=openai_key)
+
+    # 7. LLM 시장 요약
     market_summary = summarize_market_news(
         news_texts=[n["text"] for n in top_news_texts[:5]],
         report_label=label,
         openai_key=openai_key,
     )
 
-    # 7. 개별 뉴스 1~2문장 요약
+    # 8. 주요 뉴스 개별 LLM 요약
     summarized_news = summarize_top_news(top_news_texts[:5], openai_key=openai_key)
 
-    # 8. payload 조립
+    # 9. payload 조립
     market_section = build_market_section(indices, fx_rates)
     stocks_section = build_stocks_section(prices, sectors, anomalies, news_summaries)
 
@@ -612,6 +615,58 @@ def summarize_top_news(news_items: list[dict], openai_key: str) -> list[dict]:
     except Exception:
         logger.warning("뉴스 개별 요약 실패, 원본 반환", exc_info=True)
         return news_items
+
+
+def summarize_stock_news(news_summaries: dict[str, dict], openai_key: str) -> dict[str, dict]:
+    """종목별 뉴스 스니펫을 각각 1~2문장으로 LLM 요약한다.
+
+    Args:
+        news_summaries: ticker → {text, url} 매핑 dict.
+        openai_key: OpenAI API 키.
+
+    Returns:
+        ticker → {text(요약), url} 매핑 dict. 오류 시 원본 반환.
+    """
+    if not news_summaries or not openai_key:
+        return news_summaries
+
+    tickers = list(news_summaries.keys())
+    try:
+        client = OpenAI(api_key=openai_key)
+        numbered = "\n\n".join(
+            f"{i + 1}. [{ticker}] {news_summaries[ticker]['text']}"
+            for i, ticker in enumerate(tickers)
+        )
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "다음 종목별 뉴스를 각각 1~2문장으로 핵심만 요약하세요. "
+                        "번호(1. 2. ...)를 그대로 유지하고, 각 요약은 줄바꿈으로 구분하세요. "
+                        "종목명/티커 없이 뉴스 내용만 작성하고, 투자 권유는 포함하지 마세요."
+                    ),
+                },
+                {"role": "user", "content": numbered},
+            ],
+            max_tokens=100 * len(tickers),
+            temperature=0.2,
+        )
+        content = response.choices[0].message.content or ""
+        lines = [line.strip() for line in content.strip().split("\n") if line.strip()]
+        result: dict[str, dict] = {}
+        for i, ticker in enumerate(tickers):
+            original = news_summaries[ticker]
+            summary = next(
+                (line.split(".", 1)[1].strip() for line in lines if line.startswith(f"{i + 1}.")),
+                original["text"][:150],
+            )
+            result[ticker] = {"text": summary, "url": original["url"]}
+        return result
+    except Exception:
+        logger.warning("종목 뉴스 개별 요약 실패, 원본 반환", exc_info=True)
+        return news_summaries
 
 
 # ── 이상 감지 (배치) ──────────────────────────────────────────────────────
