@@ -36,12 +36,14 @@ interface Props {
   priceDate: string | null
   inWatchlist: boolean
   userId: string
+  reportSummary: string | null
 }
 
 export default function InsightClient({
   ticker, stockName, market, segment,
   price, changePct, priceDate,
   inWatchlist: initialInWatchlist, userId,
+  reportSummary,
 }: Props) {
   const router = useRouter()
   const supabase = createClient()
@@ -228,6 +230,25 @@ export default function InsightClient({
                 원인 분석하기 →
               </button>
             </div>
+          </div>
+        )}
+
+        {/* 리포트 뉴스 요약 */}
+        {reportSummary && !insight && !loading && (
+          <div className="mb-3.5 p-3.5 rounded-xl" style={{ background: '#1a1a1a', border: '1px solid #2a2a2a' }}>
+            <p className="text-[11px] font-semibold mb-1.5" style={{ color: '#888' }}>📰 리포트 뉴스 요약</p>
+            <p className="text-xs leading-relaxed" style={{ color: '#bbb' }}>{reportSummary}</p>
+            <button
+              className="mt-2.5 text-[11px] font-semibold"
+              style={{ color: '#a78bfa' }}
+              onClick={() => {
+                const q = `${stockName} 관련 최신 뉴스와 주가 영향을 분석해줘`
+                setQuery(q)
+                fetchInsight(q)
+              }}
+            >
+              AI로 더 분석하기 →
+            </button>
           </div>
         )}
 

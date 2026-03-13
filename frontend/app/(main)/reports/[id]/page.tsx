@@ -137,7 +137,7 @@ export default async function ReportDetailPage({
               return (
                 <Link
                   key={stock.ticker}
-                  href={`/insight/${encodeURIComponent(stock.ticker)}`}
+                  href={`/insight/${encodeURIComponent(stock.ticker)}${stock.news_summary ? `?summary=${encodeURIComponent(stock.news_summary)}` : ''}`}
                   className="p-3.5 rounded-2xl block"
                   style={{ background: '#1e1e1e' }}
                 >
