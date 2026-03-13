@@ -3,19 +3,22 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { type Notification, REPORT_TYPE_CONFIG } from '@/types'
 
+const KST_OPTS = { timeZone: 'Asia/Seoul' } as const
+
 function formatDate(dateStr: string) {
   const d = new Date(dateStr)
-  const today = new Date()
-  const yesterday = new Date(today)
-  yesterday.setDate(today.getDate() - 1)
+  const kstDate = new Date(d.toLocaleString('en-US', KST_OPTS))
+  const kstToday = new Date(new Date().toLocaleString('en-US', KST_OPTS))
+  const kstYesterday = new Date(kstToday)
+  kstYesterday.setDate(kstToday.getDate() - 1)
 
-  if (d.toDateString() === today.toDateString()) return '오늘'
-  if (d.toDateString() === yesterday.toDateString()) return '어제'
-  return d.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })
+  if (kstDate.toDateString() === kstToday.toDateString()) return '오늘'
+  if (kstDate.toDateString() === kstYesterday.toDateString()) return '어제'
+  return d.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', ...KST_OPTS })
 }
 
 function formatTime(dateStr: string) {
-  return new Date(dateStr).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+  return new Date(dateStr).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', ...KST_OPTS })
 }
 
 export default async function ReportsPage() {
