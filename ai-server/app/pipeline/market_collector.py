@@ -6,17 +6,18 @@ FinanceDataReader를 사용하여 주요 지수(KOSPI, KOSDAQ, S&P500, NASDAQ, D
 """
 
 import logging
+from datetime import datetime, timedelta
 
 import FinanceDataReader as fdr
 
 logger = logging.getLogger(__name__)
 
 INDICES: list[tuple[str, str, str]] = [
-    ("KS11", "KOSPI", "KOR"),
-    ("KQ11", "KOSDAQ", "KOR"),
-    ("GSPC", "S&P500", "US"),
-    ("IXIC", "NASDAQ", "US"),
-    ("DJI", "DOW", "US"),
+    ("^KS11", "KOSPI", "KOR"),
+    ("^KQ11", "KOSDAQ", "KOR"),
+    ("^GSPC", "S&P500", "US"),
+    ("^IXIC", "NASDAQ", "US"),
+    ("^DJI", "DOW", "US"),
 ]
 
 FX_PAIRS: list[str] = ["USD/KRW", "EUR/KRW"]
@@ -35,21 +36,29 @@ def fetch_market_indices(date: str, *, market: str = "KOR") -> list[dict]:
     results: list[dict] = []
     target_indices = [(s, n, m) for s, n, m in INDICES if m == market]
 
+    # 전일 대비 등락률 계산을 위해 최근 5거래일 조회
+    lookback = (datetime.strptime(date, "%Y-%m-%d") - timedelta(days=7)).strftime("%Y-%m-%d")
+
     for symbol, name, mkt in target_indices:
         try:
-            df = fdr.DataReader(symbol, date, date)
-            if df.empty:
+            df = fdr.DataReader(symbol, lookback, date)
+            if df.empty or len(df) < 1:
                 continue
 
-            row = df.iloc[-1]
-            change_val = float(row["Change"])
+            close_today = float(df["Close"].iloc[-1])
+            if len(df) >= 2:
+                close_prev = float(df["Close"].iloc[-2])
+                change_pct = round((close_today - close_prev) / close_prev * 100, 2)
+            else:
+                change_pct = 0.0
+
             results.append(
                 {
                     "symbol": symbol,
                     "name": name,
                     "date": date,
-                    "close": float(row["Close"]),
-                    "change_pct": round(change_val * 100, 2),
+                    "close": close_today,
+                    "change_pct": change_pct,
                     "market": mkt,
                 }
             )
