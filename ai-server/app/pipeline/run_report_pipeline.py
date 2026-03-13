@@ -94,13 +94,16 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # KST 주말에는 리포트를 생성하지 않음 (수동 실행 제외)
+    # 단, US_CLOSE는 KST 토요일 허용 (UTC 금요일 미국 장 마감 데이터)
     if os.environ.get("REPORT_TYPE", "").strip() == "" and not is_kst_weekday():
         kst_now = datetime.now(KST)
-        logger.info(
-            "KST 주말(%s)이므로 리포트 생성을 건너뜁니다.",
-            kst_now.strftime("%Y-%m-%d %a"),
-        )
-        sys.exit(0)
+        kst_weekday = kst_now.weekday()  # 5=토, 6=일
+        if not (report_type == "US_CLOSE" and kst_weekday == 5):
+            logger.info(
+                "KST 주말(%s)이므로 리포트 생성을 건너뜁니다.",
+                kst_now.strftime("%Y-%m-%d %a"),
+            )
+            sys.exit(0)
 
     config = {
         "supabase_url": os.environ["SUPABASE_URL"],

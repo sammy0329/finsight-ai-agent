@@ -10,7 +10,7 @@ on:
   #        Python에서 KST 주말 여부 재확인
   schedule:
     - cron: "45 7 * * 1-5"   # KOR_CLOSE     (UTC Mon-Fri 07:45 = KST Mon-Fri 16:45)
-    - cron: "45 22 * * 1-4"  # US_CLOSE      (UTC Mon-Thu 22:45 = KST Tue-Fri 07:45)
+    - cron: "45 22 * * 1-5"  # US_CLOSE      (UTC Mon-Fri 22:45 = KST Tue-Sat 07:45, 금 미국 마감 포함)
     - cron: "0 23 * * 0-4"   # KOR_PREMARKET (UTC Sun-Thu 23:00 = KST Mon-Fri 08:00)
     - cron: "30 13 * * 0-4"  # US_PREMARKET 서머타임     (UTC Sun-Thu 13:30 = KST Mon-Fri 22:30)
     - cron: "30 14 * * 0-4"  # US_PREMARKET 서머타임 해제 (UTC Sun-Thu 14:30 = KST Mon-Fri 23:30)
