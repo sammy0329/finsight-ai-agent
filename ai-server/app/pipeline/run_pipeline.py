@@ -159,7 +159,7 @@ if __name__ == "__main__":
     }
 
     supabase_url = os.getenv("SUPABASE_URL", "")
-    supabase_key = os.getenv("SUPABASE_SERVICE_KEY", "")
+    supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 
     total: dict[str, int] = {
         "collected": 0,

@@ -15,7 +15,7 @@ on:
       market:
         description: "수집 시장 (KOR / US / ALL)"
         required: false
-        default: "ALL"
+        default: "KOR"
 
 env:
   PYTHON_VERSION: "3.11"
@@ -87,7 +87,7 @@ jobs:
           CHROMA_PORT: "8001"
           INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY }}
           PIPELINE_DATE: ${{ steps.set-date.outputs.date }}
-          PIPELINE_MARKET: ${{ github.event.inputs.market || 'ALL' }}
+          PIPELINE_MARKET: ${{ github.event.inputs.market || 'KOR' }}
         run: |
           MAX_RETRIES=2
           ATTEMPT=0
