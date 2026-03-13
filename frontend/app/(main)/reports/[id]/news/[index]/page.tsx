@@ -46,16 +46,16 @@ export default async function NewsDetailPage({ params }: Props) {
         <h1 className="text-base font-bold flex-1">뉴스 상세</h1>
       </div>
 
-      {/* 뉴스 본문 */}
-      <div className="px-5 py-5">
-        <p className="text-sm leading-relaxed" style={{ color: '#ccc', lineHeight: 1.8 }}>
-          {news.text}
-        </p>
-      </div>
+      <div className="px-4 py-4 flex flex-col gap-3">
+        {/* 뉴스 본문 */}
+        <div className="p-4 rounded-2xl" style={{ background: '#1e1e1e' }}>
+          <p className="text-sm" style={{ color: '#ccc', lineHeight: 1.9 }}>
+            {news.text}
+          </p>
+        </div>
 
-      {/* 원문 바로가기 */}
-      {news.url && (
-        <div className="px-5">
+        {/* 원문 바로가기 */}
+        {news.url ? (
           <a
             href={news.url}
             target="_blank"
@@ -65,8 +65,12 @@ export default async function NewsDetailPage({ params }: Props) {
           >
             🔗 원문 뉴스 바로가기
           </a>
-        </div>
-      )}
+        ) : (
+          <p className="text-center text-xs py-2" style={{ color: '#444' }}>
+            원문 링크는 다음 파이프라인 실행 후 제공됩니다
+          </p>
+        )}
+      </div>
     </div>
   )
 }
