@@ -35,11 +35,11 @@ REPORT_CONFIG: dict[str, dict] = {
 
 # symbol → payload key 매핑
 _INDEX_KEY_MAP: dict[str, str] = {
-    "KS11": "kospi",
-    "KQ11": "kosdaq",
-    "GSPC": "sp500",
-    "IXIC": "nasdaq",
-    "DJI": "dow",
+    "^KS11": "kospi",
+    "^KQ11": "kosdaq",
+    "^GSPC": "sp500",
+    "^IXIC": "nasdaq",
+    "^DJI": "dow",
 }
 
 
