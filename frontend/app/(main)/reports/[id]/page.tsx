@@ -133,9 +133,10 @@ export default async function ReportDetailPage({
             {payload.stocks.map(stock => {
               const isUp = stock.change_pct >= 0
               return (
-                <div
+                <Link
                   key={stock.ticker}
-                  className="p-3.5 rounded-2xl"
+                  href={`/insight/${encodeURIComponent(stock.ticker)}`}
+                  className="p-3.5 rounded-2xl block"
                   style={{ background: '#1e1e1e' }}
                 >
                   <div className="flex items-center justify-between mb-1.5">
@@ -173,7 +174,7 @@ export default async function ReportDetailPage({
                       {stock.news_summary}
                     </p>
                   )}
-                </div>
+                </Link>
               )
             })}
           </div>
