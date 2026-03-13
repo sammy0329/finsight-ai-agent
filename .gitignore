@@ -39,6 +39,8 @@ venv/
 dist/
 build/
 .pytest_cache/
+.coverage
+htmlcov/
 .mypy_cache/
 .ruff_cache/
 
