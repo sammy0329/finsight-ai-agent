@@ -188,15 +188,31 @@ export default async function ReportDetailPage({
         <div className="mb-8">
           <p className="px-5 py-2 text-xs font-medium" style={{ color: '#555' }}>주요 뉴스</p>
           <div className="flex flex-col gap-1.5 px-4">
-            {payload.top_news.map((news, i) => (
-              <div
-                key={i}
-                className="px-4 py-3 rounded-xl text-xs"
-                style={{ background: '#1e1e1e', color: '#aaa', lineHeight: 1.6 }}
-              >
-                {news}
-              </div>
-            ))}
+            {payload.top_news.map((item, i) => {
+              // 하위 호환: 기존 string[] 형태 지원
+              const news = typeof item === 'string' ? { text: item, url: '' } : item
+              return news.url ? (
+                <a
+                  key={i}
+                  href={news.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-3 rounded-xl text-xs block"
+                  style={{ background: '#1e1e1e', color: '#aaa', lineHeight: 1.6 }}
+                >
+                  {news.text}
+                  <span className="block mt-1 text-[10px]" style={{ color: '#444' }}>원문 보기 →</span>
+                </a>
+              ) : (
+                <div
+                  key={i}
+                  className="px-4 py-3 rounded-xl text-xs"
+                  style={{ background: '#1e1e1e', color: '#aaa', lineHeight: 1.6 }}
+                >
+                  {news.text}
+                </div>
+              )
+            })}
           </div>
         </div>
       )}

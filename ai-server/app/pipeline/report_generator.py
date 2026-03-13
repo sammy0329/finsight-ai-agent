@@ -178,7 +178,7 @@ def build_payload(report_type: ReportType, config: dict) -> dict:
 
     # 6. LLM 시장 요약
     market_summary = summarize_market_news(
-        news_texts=top_news_texts[:5],
+        news_texts=[n["text"] for n in top_news_texts[:5]],
         report_label=label,
         openai_key=config.get("openai_api_key", ""),
     )
@@ -453,7 +453,7 @@ def insert_notifications(
 # ── ChromaDB 뉴스 검색 ────────────────────────────────────────────────────
 
 
-def fetch_top_news(chroma_host: str, chroma_port: int, market: str) -> list[str]:
+def fetch_top_news(chroma_host: str, chroma_port: int, market: str) -> list[dict]:
     """ChromaDB에서 최신 뉴스 헤드라인을 수집한다.
 
     Args:
@@ -462,14 +462,14 @@ def fetch_top_news(chroma_host: str, chroma_port: int, market: str) -> list[str]
         market: "KOR" 또는 "US".
 
     Returns:
-        뉴스 텍스트 리스트. 오류 시 빈 리스트.
+        {text, url} dict 리스트. 오류 시 빈 리스트.
     """
     try:
         from app.agent.retriever import get_retriever
 
         retriever = get_retriever(chroma_host=chroma_host, chroma_port=chroma_port, market=market)
         docs = retriever.invoke("오늘 시장 주요 뉴스" if market == "KOR" else "today market news")
-        return [doc.page_content for doc in docs]
+        return [{"text": doc.page_content, "url": doc.metadata.get("url", "")} for doc in docs]
     except Exception:
         logger.warning("ChromaDB 뉴스 조회 실패: market=%s", market, exc_info=True)
         return []

@@ -140,6 +140,7 @@ def build_news_metadata(item: dict, source: str, market: str) -> dict:
     analysis_text = " ".join(filter(None, [item.get("title", ""), item.get("description", "")]))
 
     tickers = extract_tickers(analysis_text, market)
+    url = item.get("link") or item.get("url") or item.get("originallink") or ""
     return {
         "source": source,
         "published_at": item.get("pubDate", ""),
@@ -148,4 +149,5 @@ def build_news_metadata(item: dict, source: str, market: str) -> dict:
         "related_tickers": ",".join(tickers),
         "category": item.get("category", "general"),
         "sentiment": detect_sentiment(analysis_text),
+        "url": url,
     }

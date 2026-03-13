@@ -69,7 +69,7 @@ export interface ReportPayload {
   market_summary: string
   market: ReportMarket
   stocks: ReportStock[]
-  top_news: string[]
+  top_news: { text: string; url: string }[]
 }
 
 export interface Notification {
