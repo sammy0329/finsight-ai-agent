@@ -86,7 +86,7 @@ def build_stocks_section(
     prices: list[dict],
     sectors: dict[str, str],
     anomalies: dict[str, dict],
-    news_summaries: dict[str, str],
+    news_summaries: dict[str, dict],
 ) -> list[dict]:
     """종목 가격·섹터·이상감지·뉴스요약으로 stocks payload 섹션을 빌드한다.
 
@@ -94,7 +94,7 @@ def build_stocks_section(
         prices: ticker, name, close, change_pct 포함 리스트.
         sectors: ticker → sector 매핑.
         anomalies: ticker → {zscore, is_anomaly} 매핑.
-        news_summaries: ticker → 뉴스 요약 문자열 매핑.
+        news_summaries: ticker → {text, url} 매핑.
 
     Returns:
         stocks payload 리스트.
@@ -103,6 +103,7 @@ def build_stocks_section(
     for p in prices:
         ticker = p["ticker"]
         anomaly = anomalies.get(ticker, {})
+        news = news_summaries.get(ticker, {})
         stocks.append(
             {
                 "ticker": ticker,
@@ -112,7 +113,8 @@ def build_stocks_section(
                 "change_pct": p.get("change_pct", 0.0),
                 "zscore": anomaly.get("zscore"),
                 "price_anomaly": anomaly.get("is_anomaly", False),
-                "news_summary": news_summaries.get(ticker, ""),
+                "news_summary": news.get("text", "") if isinstance(news, dict) else news,
+                "news_url": news.get("url", "") if isinstance(news, dict) else "",
             }
         )
     return stocks
@@ -490,7 +492,7 @@ def fetch_stock_news_snippets(
         tickers: 종목 티커 리스트.
 
     Returns:
-        ticker → 뉴스 스니펫 매핑 dict. 오류 시 빈 dict.
+        ticker → {text, url} 매핑 dict. 오류 시 빈 dict.
     """
     if not tickers:
         return {}
@@ -498,12 +500,15 @@ def fetch_stock_news_snippets(
         from app.agent.retriever import get_retriever
 
         retriever = get_retriever(chroma_host=chroma_host, chroma_port=chroma_port, market=market)
-        summaries: dict[str, str] = {}
+        summaries: dict[str, dict] = {}
         for ticker in tickers:
             try:
                 docs = retriever.invoke(ticker)
                 if docs:
-                    summaries[ticker] = docs[0].page_content[:150]
+                    summaries[ticker] = {
+                        "text": docs[0].page_content[:300],
+                        "url": docs[0].metadata.get("url", ""),
+                    }
             except Exception:
                 logger.warning("종목 뉴스 스니펫 조회 실패: ticker=%s", ticker)
         return summaries

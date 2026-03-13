@@ -6,12 +6,12 @@ import { fetchPrice } from '@/lib/yahoo'
 
 interface Props {
   params: Promise<{ ticker: string }>
-  searchParams: Promise<{ summary?: string }>
+  searchParams: Promise<{ summary?: string; news_url?: string }>
 }
 
 export default async function InsightPage({ params, searchParams }: Props) {
   const { ticker } = await params
-  const { summary } = await searchParams
+  const { summary, news_url } = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -44,6 +44,7 @@ export default async function InsightPage({ params, searchParams }: Props) {
       inWatchlist={!!wl}
       userId={user.id}
       reportSummary={summary ?? null}
+      reportNewsUrl={news_url ?? null}
     />
   )
 }

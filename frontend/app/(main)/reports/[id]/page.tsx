@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { type Notification, type ReportMarket, REPORT_TYPE_CONFIG } from '@/types'
+import TopNewsSection from './TopNewsSection'
 
 function IndexRow({ label, value, changePct }: { label: string; value: number; changePct?: number }) {
   const isUp = (changePct ?? 0) >= 0
@@ -137,7 +138,11 @@ export default async function ReportDetailPage({
               return (
                 <Link
                   key={stock.ticker}
-                  href={`/insight/${encodeURIComponent(stock.ticker)}${stock.news_summary ? `?summary=${encodeURIComponent(stock.news_summary)}` : ''}`}
+                  href={`/insight/${encodeURIComponent(stock.ticker)}${
+                    stock.news_summary
+                      ? `?summary=${encodeURIComponent(stock.news_summary)}${stock.news_url ? `&news_url=${encodeURIComponent(stock.news_url)}` : ''}`
+                      : ''
+                  }`}
                   className="p-3.5 rounded-2xl block"
                   style={{ background: '#1e1e1e' }}
                 >
@@ -187,33 +192,7 @@ export default async function ReportDetailPage({
       {payload.top_news.length > 0 && (
         <div className="mb-8">
           <p className="px-5 py-2 text-xs font-medium" style={{ color: '#555' }}>주요 뉴스</p>
-          <div className="flex flex-col gap-1.5 px-4">
-            {payload.top_news.map((item, i) => {
-              // 하위 호환: 기존 string[] 형태 지원
-              const news = typeof item === 'string' ? { text: item, url: '' } : item
-              return news.url ? (
-                <a
-                  key={i}
-                  href={news.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-4 py-3 rounded-xl text-xs block"
-                  style={{ background: '#1e1e1e', color: '#aaa', lineHeight: 1.6 }}
-                >
-                  {news.text}
-                  <span className="block mt-1 text-[10px]" style={{ color: '#444' }}>원문 보기 →</span>
-                </a>
-              ) : (
-                <div
-                  key={i}
-                  className="px-4 py-3 rounded-xl text-xs"
-                  style={{ background: '#1e1e1e', color: '#aaa', lineHeight: 1.6 }}
-                >
-                  {news.text}
-                </div>
-              )
-            })}
-          </div>
+          <TopNewsSection items={payload.top_news} />
         </div>
       )}
     </div>

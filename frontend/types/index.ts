@@ -63,6 +63,7 @@ export interface ReportStock {
   zscore: number | null
   price_anomaly: boolean
   news_summary: string
+  news_url: string
 }
 
 export interface ReportPayload {

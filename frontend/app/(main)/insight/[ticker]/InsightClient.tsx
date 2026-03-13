@@ -37,13 +37,14 @@ interface Props {
   inWatchlist: boolean
   userId: string
   reportSummary: string | null
+  reportNewsUrl: string | null
 }
 
 export default function InsightClient({
   ticker, stockName, market, segment,
   price, changePct, priceDate,
   inWatchlist: initialInWatchlist, userId,
-  reportSummary,
+  reportSummary, reportNewsUrl,
 }: Props) {
   const router = useRouter()
   const supabase = createClient()
@@ -238,6 +239,17 @@ export default function InsightClient({
           <div className="mb-3.5 p-3.5 rounded-xl" style={{ background: '#1a1a1a', border: '1px solid #2a2a2a' }}>
             <p className="text-[11px] font-semibold mb-1.5" style={{ color: '#888' }}>📰 리포트 뉴스 요약</p>
             <p className="text-xs leading-relaxed" style={{ color: '#bbb' }}>{reportSummary}</p>
+            {reportNewsUrl && (
+              <a
+                href={reportNewsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 flex items-center gap-1 text-[11px]"
+                style={{ color: '#60a5fa' }}
+              >
+                <span style={{ fontSize: 10 }}>🔗</span> 참고 기사 원문 보기
+              </a>
+            )}
             <button
               className="mt-2.5 text-[11px] font-semibold"
               style={{ color: '#a78bfa' }}
