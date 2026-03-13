@@ -11,7 +11,7 @@ CLI 실행:
 import logging
 import os
 import sys
-from datetime import date
+from datetime import datetime, timedelta, timezone
 
 from app.pipeline.chroma_client import get_chroma_client, get_or_create_collection
 from app.pipeline.chunker import chunk_news_item
@@ -30,6 +30,8 @@ from app.pipeline.supabase_store import (
     upsert_market_indices,
 )
 from app.pipeline.vector_store import upsert_chunks
+
+KST = timezone(timedelta(hours=9))
 
 logger = logging.getLogger(__name__)
 
@@ -142,7 +144,7 @@ if __name__ == "__main__":
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
 
-    run_date = os.getenv("PIPELINE_DATE") or date.today().isoformat()
+    run_date = os.getenv("PIPELINE_DATE") or datetime.now(KST).strftime("%Y-%m-%d")
     market = os.getenv("PIPELINE_MARKET", "ALL")
     markets = ["KOR", "US"] if market == "ALL" else [market]
 

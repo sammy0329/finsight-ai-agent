@@ -80,7 +80,7 @@ jobs:
         id: set-date
         run: |
           if [ -z "${{ github.event.inputs.date }}" ]; then
-            echo "date=$(date '+%Y-%m-%d')" >> $GITHUB_OUTPUT
+            echo "date=$(TZ='Asia/Seoul' date '+%Y-%m-%d')" >> $GITHUB_OUTPUT
           else
             echo "date=${{ github.event.inputs.date }}" >> $GITHUB_OUTPUT
           fi

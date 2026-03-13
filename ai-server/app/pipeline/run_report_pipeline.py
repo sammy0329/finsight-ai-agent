@@ -18,33 +18,35 @@ from __future__ import annotations
 import logging
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from app.pipeline.report_generator import REPORT_CONFIG, ReportType, run_report_pipeline
+
+KST = timezone(timedelta(hours=9))
 
 logger = logging.getLogger(__name__)
 
 _VALID_TYPES = list(REPORT_CONFIG.keys())
 
 
-def infer_report_type_from_utc_hour() -> ReportType | None:
-    """현재 UTC 시각으로 리포트 타입을 추론한다.
+def infer_report_type_from_kst_hour() -> ReportType | None:
+    """현재 KST 시각으로 리포트 타입을 추론한다.
 
     스케줄:
-        KOR_PREMARKET  UTC 23:00 (KST 08:00)
-        KOR_CLOSE      UTC 07:30 (KST 16:30)
-        US_PREMARKET   UTC 13:30 (KST 22:30)
-        US_CLOSE       UTC 22:30 (KST 07:30)
+        KOR_PREMARKET  KST 08:00
+        KOR_CLOSE      KST 16:45
+        US_PREMARKET   KST 22:30
+        US_CLOSE       KST 07:45
 
     Returns:
         추론된 ReportType 또는 None.
     """
-    hour = datetime.now(timezone.utc).hour
+    hour = datetime.now(KST).hour
     mapping: dict[int, ReportType] = {
-        23: "KOR_PREMARKET",
-        7: "KOR_CLOSE",
-        13: "US_PREMARKET",
-        22: "US_CLOSE",
+        8: "KOR_PREMARKET",
+        16: "KOR_CLOSE",
+        22: "US_PREMARKET",
+        7: "US_CLOSE",
     }
     return mapping.get(hour)
 
@@ -55,7 +57,7 @@ def _get_report_type() -> ReportType:
     if env_type in _VALID_TYPES:
         return env_type  # type: ignore[return-value]
 
-    inferred = infer_report_type_from_utc_hour()
+    inferred = infer_report_type_from_kst_hour()
     if inferred:
         logger.info("REPORT_TYPE 미설정 — UTC 시각 기반 추론: %s", inferred)
         return inferred
@@ -77,7 +79,7 @@ if __name__ == "__main__":
     parser.add_argument("--date", default="", help="기준일 YYYY-MM-DD (미입력 시 오늘)")
     args = parser.parse_args()
 
-    date = args.date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    date = args.date or datetime.now(KST).strftime("%Y-%m-%d")
 
     try:
         report_type = _get_report_type()
