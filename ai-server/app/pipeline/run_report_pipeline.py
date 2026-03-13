@@ -29,13 +29,18 @@ logger = logging.getLogger(__name__)
 _VALID_TYPES = list(REPORT_CONFIG.keys())
 
 
+def is_kst_weekday() -> bool:
+    """KST 기준 평일(월~금) 여부를 반환한다."""
+    return datetime.now(KST).weekday() < 5  # 0=월, 4=금, 5=토, 6=일
+
+
 def infer_report_type_from_kst_hour() -> ReportType | None:
     """현재 KST 시각으로 리포트 타입을 추론한다.
 
     스케줄:
         KOR_PREMARKET  KST 08:00
         KOR_CLOSE      KST 16:45
-        US_PREMARKET   KST 22:30
+        US_PREMARKET   KST 22:30 (서머타임) / KST 23:30 (서머타임 해제)
         US_CLOSE       KST 07:45
 
     Returns:
@@ -45,7 +50,8 @@ def infer_report_type_from_kst_hour() -> ReportType | None:
     mapping: dict[int, ReportType] = {
         8: "KOR_PREMARKET",
         16: "KOR_CLOSE",
-        22: "US_PREMARKET",
+        22: "US_PREMARKET",  # 서머타임 (3~11월)
+        23: "US_PREMARKET",  # 서머타임 해제 (11~3월)
         7: "US_CLOSE",
     }
     return mapping.get(hour)
@@ -86,6 +92,15 @@ if __name__ == "__main__":
     except ValueError as e:
         logger.error(str(e))
         sys.exit(1)
+
+    # KST 주말에는 리포트를 생성하지 않음 (수동 실행 제외)
+    if os.environ.get("REPORT_TYPE", "").strip() == "" and not is_kst_weekday():
+        kst_now = datetime.now(KST)
+        logger.info(
+            "KST 주말(%s)이므로 리포트 생성을 건너뜁니다.",
+            kst_now.strftime("%Y-%m-%d %a"),
+        )
+        sys.exit(0)
 
     config = {
         "supabase_url": os.environ["SUPABASE_URL"],

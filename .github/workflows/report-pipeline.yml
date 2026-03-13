@@ -3,13 +3,17 @@ name: Report Generation Pipeline
 on:
   # T-610: 한국 장 마감 리포트 — UTC 07:45 (KST 16:45, 데이터 파이프라인 완료 후)
   # T-611: 미국 장 마감 리포트 — UTC 22:45 (KST 07:45, US 파이프라인 완료 후)
+  #        UTC Mon-Thu만 실행 (1-4): UTC Fri = KST Sat 07:45 주말 발송 방지
   # T-612: 한국 장 전 브리프   — UTC 23:00 (KST 08:00)
-  # T-613: 미국 장 전 브리프   — UTC 13:30 (KST 22:30)
+  # T-613: 미국 장 전 브리프   — 서머타임(3~11월) UTC 13:30 (KST 22:30)
+  #                              서머타임 해제(11~3월) UTC 14:30 (KST 23:30)
+  #        Python에서 KST 주말 여부 재확인
   schedule:
-    - cron: "45 7 * * 1-5"   # KOR_CLOSE
-    - cron: "45 22 * * 1-5"  # US_CLOSE
-    - cron: "0 23 * * 0-4"   # KOR_PREMARKET (일~목 UTC 23 = 월~금 KST 08)
-    - cron: "30 13 * * 0-4"  # US_PREMARKET  (일~목 UTC 13 = 월~금 KST 22)
+    - cron: "45 7 * * 1-5"   # KOR_CLOSE     (UTC Mon-Fri 07:45 = KST Mon-Fri 16:45)
+    - cron: "45 22 * * 1-4"  # US_CLOSE      (UTC Mon-Thu 22:45 = KST Tue-Fri 07:45)
+    - cron: "0 23 * * 0-4"   # KOR_PREMARKET (UTC Sun-Thu 23:00 = KST Mon-Fri 08:00)
+    - cron: "30 13 * * 0-4"  # US_PREMARKET 서머타임     (UTC Sun-Thu 13:30 = KST Mon-Fri 22:30)
+    - cron: "30 14 * * 0-4"  # US_PREMARKET 서머타임 해제 (UTC Sun-Thu 14:30 = KST Mon-Fri 23:30)
 
   # 수동 실행
   workflow_dispatch:
@@ -66,7 +70,8 @@ jobs:
               echo "type=KOR_PREMARKET" >> $GITHUB_OUTPUT
             elif [ "$HOUR" = "07" ]; then
               echo "type=KOR_CLOSE" >> $GITHUB_OUTPUT
-            elif [ "$HOUR" = "13" ]; then
+            elif [ "$HOUR" = "13" ] || [ "$HOUR" = "14" ]; then
+              # 서머타임(UTC 13) / 서머타임 해제(UTC 14) 모두 US_PREMARKET
               echo "type=US_PREMARKET" >> $GITHUB_OUTPUT
             elif [ "$HOUR" = "22" ]; then
               echo "type=US_CLOSE" >> $GITHUB_OUTPUT
