@@ -146,7 +146,16 @@ def build_payload(report_type: ReportType, config: dict) -> dict:
     # 2. 관심종목 종가 + 섹터
     ticker_infos = fetch_watchlist_tickers(url, key, market_code)
     tickers = [t["ticker"] for t in ticker_infos]
+    ticker_names = {t["ticker"]: t["name"] for t in ticker_infos}
     prices = fetch_latest_prices(url, key, tickers, date) if tickers else []
+    # daily_prices에 name 컬럼이 없으므로 watchlist에서 가져온 name 병합
+    for p in prices:
+        p["name"] = ticker_names.get(p["ticker"], p["ticker"])
+    # 가격 데이터가 없는 종목도 포함 (name만 표시)
+    priced_tickers = {p["ticker"] for p in prices}
+    for t in ticker_infos:
+        if t["ticker"] not in priced_tickers:
+            prices.append({"ticker": t["ticker"], "name": t["name"], "close": 0, "change_pct": 0.0})
     sectors = fetch_company_sectors(url, key, tickers) if tickers else {}
 
     # 3. Z-score 이상 감지

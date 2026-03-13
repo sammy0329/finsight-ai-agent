@@ -133,16 +133,15 @@ export default async function ReportDetailPage({
             {payload.stocks.map(stock => {
               const isUp = stock.change_pct >= 0
               return (
-                <Link
+                <div
                   key={stock.ticker}
-                  href={`/insight/${stock.ticker}`}
-                  className="block p-3.5 rounded-2xl"
+                  className="p-3.5 rounded-2xl"
                   style={{ background: '#1e1e1e' }}
                 >
                   <div className="flex items-center justify-between mb-1.5">
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-sm font-semibold">{stock.name}</span>
+                        <span className="text-sm font-semibold">{stock.name || stock.ticker}</span>
                         {stock.price_anomaly && (
                           <span
                             className="text-[9px] px-1.5 py-0.5 rounded font-bold"
@@ -157,20 +156,24 @@ export default async function ReportDetailPage({
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-bold">
-                        {stock.close.toLocaleString('ko-KR', { maximumFractionDigits: 0 })}
-                      </p>
-                      <p className="text-xs mt-0.5" style={{ color: isUp ? '#f87171' : '#60a5fa' }}>
-                        {isUp ? '▲' : '▼'} {Math.abs(stock.change_pct).toFixed(2)}%
-                      </p>
+                      {stock.close > 0 && (
+                        <>
+                          <p className="text-sm font-bold">
+                            {stock.close.toLocaleString('ko-KR', { maximumFractionDigits: 0 })}
+                          </p>
+                          <p className="text-xs mt-0.5" style={{ color: isUp ? '#f87171' : '#60a5fa' }}>
+                            {isUp ? '▲' : '▼'} {Math.abs(stock.change_pct).toFixed(2)}%
+                          </p>
+                        </>
+                      )}
                     </div>
                   </div>
                   {stock.news_summary && (
-                    <p className="text-xs mt-1 line-clamp-2" style={{ color: '#666', lineHeight: 1.6 }}>
+                    <p className="text-xs mt-1 line-clamp-3" style={{ color: '#666', lineHeight: 1.6 }}>
                       {stock.news_summary}
                     </p>
                   )}
-                </Link>
+                </div>
               )
             })}
           </div>
