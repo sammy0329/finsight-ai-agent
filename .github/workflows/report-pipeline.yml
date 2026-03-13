@@ -98,7 +98,7 @@ jobs:
           ssh -i ~/.ssh/finsight-key.pem \
               -L 8001:localhost:8001 \
               -N -f \
-              ec2-user@"$EC2_HOST"
+              ubuntu@"$EC2_HOST"
           echo "SSH tunnel established"
 
       - name: Run report pipeline
@@ -125,6 +125,7 @@ jobs:
       # 성공 Slack 알림
       - name: Notify Slack on success
         if: success()
+        continue-on-error: true
         uses: slackapi/slack-github-action@v1.27.0
         with:
           payload: |
@@ -147,6 +148,7 @@ jobs:
       # 실패 Slack 알림
       - name: Notify Slack on failure
         if: failure()
+        continue-on-error: true
         uses: slackapi/slack-github-action@v1.27.0
         with:
           payload: |

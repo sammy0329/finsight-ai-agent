@@ -70,7 +70,7 @@ jobs:
           ssh -i ~/.ssh/finsight-key.pem \
               -L 8001:localhost:8001 \
               -N -f \
-              ec2-user@"$EC2_HOST"
+              ubuntu@"$EC2_HOST"
           echo "SSH tunnel established"
 
       # T-118: 파이프라인 실행 (실패 시 재시도 스크립트)
@@ -109,6 +109,7 @@ jobs:
       # T-119: 성공 시 Slack 알림
       - name: Notify Slack on success
         if: success()
+        continue-on-error: true
         uses: slackapi/slack-github-action@v1.27.0
         with:
           payload: |
@@ -131,6 +132,7 @@ jobs:
       # T-119: 실패 시 Slack 알림
       - name: Notify Slack on failure
         if: failure()
+        continue-on-error: true
         uses: slackapi/slack-github-action@v1.27.0
         with:
           payload: |

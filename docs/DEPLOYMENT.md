@@ -70,7 +70,7 @@ flowchart TD
 | 항목 | 값 |
 |---|---|
 | 인스턴스 타입 | t3.micro (vCPU 2, Memory 1GB) |
-| OS | Amazon Linux 2023 |
+| OS | Ubuntu 24.04 LTS |
 | 스토리지 | EBS gp3 20GB (ChromaDB 벡터 데이터 영속성) |
 | 탄력적 IP | 고정 IP 할당 |
 
@@ -85,21 +85,24 @@ flowchart TD
 ### 배포 절차
 
 ```bash
-# 1. EC2 접속
-ssh -i finsight-key.pem ec2-user@{ELASTIC_IP}
+# 0. PEM 키 권한 설정 (최초 1회 — 없으면 SSH 연결 거부됨)
+chmod 400 finsight-key.pem
 
-# 2. Docker 설치 (Amazon Linux 2023)
-sudo dnf install -y docker git
-sudo systemctl enable --now docker
-sudo usermod -aG docker ec2-user
-# 재로그인 후 적용
+# 1. EC2 접속 (Ubuntu AMI의 기본 유저는 ubuntu)
+ssh -i finsight-key.pem ubuntu@{ELASTIC_IP}
 
-# 3. Docker Compose v2 설치
-DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
-mkdir -p $DOCKER_CONFIG/cli-plugins
-curl -SL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64" \
-  -o $DOCKER_CONFIG/cli-plugins/docker-compose
-chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
+# 2. Docker 설치 (Ubuntu 공식 방법)
+sudo apt-get update
+sudo apt-get install -y ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] \
+  https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
+  | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin git
+sudo usermod -aG docker ubuntu
+# 재로그인 후 적용 (docker compose version 으로 확인)
 
 # 4. 코드 배포
 git clone https://github.com/sammy0329/finsight-ai-agent.git
