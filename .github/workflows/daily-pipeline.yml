@@ -1,9 +1,9 @@
 name: Daily Financial Data Pipeline
 
 on:
-  # T-116: 평일 16:30 KST (UTC 07:30)
+  # T-116: 평일 16:00 KST (UTC 07:00) — KOR_CLOSE 리포트(UTC 07:45) 전 45분 여유
   schedule:
-    - cron: "30 7 * * 1-5"
+    - cron: "0 7 * * 1-5"
 
   # T-120: 수동 실행
   workflow_dispatch:
