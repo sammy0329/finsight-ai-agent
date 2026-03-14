@@ -1,9 +1,11 @@
 name: US Financial Data Pipeline
 
 on:
-  # T-601: UTC 22:00 (KST 07:00) — US 장 마감 후
+  # T-601: UTC 22:00 (KST 07:00) — US 장 마감 후 수집
+  #         UTC 13:00 (KST 22:00) — US_PREMARKET 리포트(KST 22:30) 전 30분 여유
   schedule:
-    - cron: "0 22 * * 1-5"
+    - cron: "0 22 * * 1-5"   # KST 07:00 장 마감 후 수집
+    - cron: "0 13 * * 0-4"   # KST 22:00 장 전 뉴스 수집 (UTC Sun-Thu = KST Mon-Fri)
 
   workflow_dispatch:
     inputs:
