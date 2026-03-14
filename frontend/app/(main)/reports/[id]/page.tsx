@@ -136,14 +136,9 @@ export default async function ReportDetailPage({
             {payload.stocks.map(stock => {
               const isUp = stock.change_pct >= 0
               return (
-                <Link
+                <div
                   key={stock.ticker}
-                  href={`/insight/${encodeURIComponent(stock.ticker)}${
-                    stock.news_summary
-                      ? `?summary=${encodeURIComponent(stock.news_summary)}${stock.news_url ? `&news_url=${encodeURIComponent(stock.news_url)}` : ''}`
-                      : ''
-                  }`}
-                  className="p-3.5 rounded-2xl block"
+                  className="p-3.5 rounded-2xl"
                   style={{ background: '#1e1e1e' }}
                 >
                   <div className="flex items-center justify-between mb-1.5">
@@ -177,11 +172,22 @@ export default async function ReportDetailPage({
                     </div>
                   </div>
                   {stock.news_summary && (
-                    <p className="text-xs mt-1 line-clamp-3" style={{ color: '#666', lineHeight: 1.6 }}>
+                    <p className="text-xs mt-1" style={{ color: '#666', lineHeight: 1.6 }}>
                       {stock.news_summary}
                     </p>
                   )}
-                </Link>
+                  {stock.news_url && (
+                    <a
+                      href={stock.news_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block mt-2 text-[11px]"
+                      style={{ color: '#60a5fa' }}
+                    >
+                      🔗 관련 기사 보기
+                    </a>
+                  )}
+                </div>
               )
             })}
           </div>
